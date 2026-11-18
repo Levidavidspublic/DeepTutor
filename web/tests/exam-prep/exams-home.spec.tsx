@@ -49,16 +49,14 @@ it("shows loading, then one card per pack with its subject names", async () => {
   expect(screen.queryByRole("status", { name: "Loading…" })).not.toBeInTheDocument();
 });
 
-it("shows the empty state with a link to the pack instructions", async () => {
+it("shows the empty state with a plain next step", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([]);
 
   render(<Page />);
 
   expect(await screen.findByRole("heading", { name: "No exam packs yet" })).toBeVisible();
-  expect(screen.getByRole("link", { name: "Add an exam pack to get started." })).toHaveAttribute(
-    "href",
-    expect.stringContaining("/fork/docs/BACKEND_SCHEMA.md#storage-map"),
-  );
+  expect(screen.getByText("Add an exam pack to get started.")).toBeVisible();
+  expect(screen.queryByRole("link", { name: "Add an exam pack to get started." })).not.toBeInTheDocument();
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
