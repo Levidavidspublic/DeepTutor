@@ -63,7 +63,8 @@ type PackList =
 
 export function ExamsHome() {
   const { i18n, t: tApp } = useTranslation();
-  const t = examI18n.getFixedT(normalizeLanguage(i18n.language), "exam");
+  const locale = normalizeLanguage(i18n.language);
+  const t = examI18n.getFixedT(locale, "exam");
   const [list, setList] = useState<PackList>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
 
@@ -108,7 +109,14 @@ export function ExamsHome() {
           <ul className={pageGridClass(2)} role="list">
             {list.packs.map((pack) => (
               <li key={pack.id}>
-                <ExamPackCard pack={pack} subjectsLabel={t("subjects")} continueLabel={t("continue")} />
+                <ExamPackCard
+                  pack={pack}
+                  locale={locale}
+                  subjectsLabel={t("subjects")}
+                  continueLabel={t("continue")}
+                  progressLabel={t("progress")}
+                  examDateLabel={t("examDate")}
+                />
               </li>
             ))}
           </ul>
