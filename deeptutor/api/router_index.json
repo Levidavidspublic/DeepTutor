@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "fingerprint": "b30305838c249ccc815032ce5d01607f4dc3198455e07517f8b3c92cbdd0a91e",
+=======
+  "fingerprint": "25912119636c474b2e90d14980d2e713689c03612246fa0b8ed4f1c75ff8546a",
+>>>>>>> origin/ticket/34-p2-06
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3544,6 +3548,7 @@
         ]
       },
       {
+<<<<<<< HEAD
         "path": "/{pack}/subjects/{subject}/topics/{topic}/teach-back",
         "name": "submit_teach_back",
         "kind": "http",
@@ -3552,6 +3557,8 @@
         ]
       },
       {
+=======
+>>>>>>> origin/ticket/34-p2-06
         "path": "/{pack}/glossary",
         "name": "get_exam_glossary",
         "kind": "http",
