@@ -4,7 +4,8 @@
 // ships on dev (frozen at 3cbecb2). Do not evolve this copy; the modern
 // learning home lives in components/learning/LearningDashboard.tsx.
 
-import { pageGridClass } from '@/components/layout/FeaturePage'
+import { pageActionClass, pageGridClass } from '@/components/layout/FeaturePage'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { BookOpen, Route } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -97,6 +98,9 @@ export function ClassicLearningDashboard() {
       {/* The ways in lead the page: everything below them assumes you already
           chose one. Each opens its own introduction before it commits you. */}
       <LearningWays />
+      <Link href={scopedUrl('/learning/exams')} prefetch={false} className={`${pageActionClass('secondary')} mb-6`}>
+        {t('title', { ns: 'exam' })}
+      </Link>
       {failed.length > 0 && (
         <LearningErrorState
           message={t('Some learning activity could not be loaded: {{sources}}.', {
