@@ -17,7 +17,7 @@ const pack: ExamPackSummary = {
   ui_lang: "en",
   subjects: [
     { id: "math#1", title: "Math", title_source: "Math" },
-    { id: "science", title: "Science", title_source: "Science" },
+    { id: "science/lab", title: "Science", title_source: "Science" },
   ],
 };
 
@@ -62,15 +62,25 @@ it("shows the empty state with a link to the pack instructions", async () => {
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
-it("links Continue to the first subject with both path segments encoded", async () => {
+it("gives each subject a named Continue link with both path segments encoded", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([pack]);
 
   render(<Page />);
 
-  expect(await screen.findByRole("link", { name: "Continue" })).toHaveAttribute(
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  expect(within(card).getAllByRole("link")).toHaveLength(2);
+  const mathLink = within(card).getByRole("link", { name: "Continue Math" });
+  const scienceLink = within(card).getByRole("link", { name: "Continue Science" });
+  expect(mathLink).toHaveAttribute(
     "href",
     "/learning/exams/demo%20pack/math%231",
   );
+  expect(scienceLink).toHaveAttribute(
+    "href",
+    "/learning/exams/demo%20pack/science%2Flab",
+  );
+  expect(within(mathLink).getByText("Math")).toHaveAttribute("lang", pack.ui_lang);
+  expect(within(scienceLink).getByText("Science")).toHaveAttribute("lang", pack.ui_lang);
 });
 
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {
@@ -78,8 +88,9 @@ it("keeps a pack with no subjects visible without a broken Continue link", async
 
   render(<Page />);
 
-  expect(await screen.findByRole("article", { name: "Demo Exam Pack" })).toBeVisible();
-  expect(screen.queryByRole("link", { name: "Continue" })).not.toBeInTheDocument();
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  expect(card).toBeVisible();
+  expect(within(card).queryByRole("link")).not.toBeInTheDocument();
 });
 
 it("offers Retry after a failure and shows the result of the new request", async () => {
