@@ -23,9 +23,13 @@ export interface ExamPackSummary {
 export interface ExamSubjectDetail {
   id: string;
   title: string;
+  source_lang?: string;
+  ui_lang?: string;
   questionnaires: ExamQuestionnaire[];
   topics: ExamTopic[];
 }
+
+export type ExamTopicStatus = "new" | "learning" | "review" | "done";
 
 export interface ExamTopic {
   id: string;
@@ -33,6 +37,7 @@ export interface ExamTopic {
   title_source: string;
   weight: number;
   objectives: string[];
+  status?: ExamTopicStatus;
 }
 
 export interface GlossaryTerm {
