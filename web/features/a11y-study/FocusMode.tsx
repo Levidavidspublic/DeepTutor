@@ -126,7 +126,10 @@ export function FocusModeToggle() {
   );
 }
 
-export function FocusFrame({ children }: { children: ReactNode }) {
+export function FocusFrame({ children, showStudyTimer = true }: {
+  children: ReactNode;
+  showStudyTimer?: boolean;
+}) {
   const { focusOn, minutes } = useFocusMode();
   const { i18n } = useTranslation();
 
@@ -137,7 +140,7 @@ export function FocusFrame({ children }: { children: ReactNode }) {
         ? "flex min-h-dvh flex-col gap-4 bg-background p-4 text-foreground sm:p-6"
         : "contents"}
     >
-      {focusOn && (
+      {focusOn && showStudyTimer && (
         <div className="mx-auto w-full max-w-3xl">
           <StudyTimer key={minutes} minutes={minutes} />
         </div>
