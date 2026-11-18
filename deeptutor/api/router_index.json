@@ -1,5 +1,5 @@
 {
-  "fingerprint": "96cd7d2790940a64c664ff0f031c188790db5d6374ecf40e1edb5c1bfac881cc",
+  "fingerprint": "25912119636c474b2e90d14980d2e713689c03612246fa0b8ed4f1c75ff8546a",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3533,6 +3533,14 @@
         "kind": "http",
         "methods": [
           "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/subjects/{subject}/topics/{topic}/mastery-link",
+        "name": "create_mastery_link",
+        "kind": "http",
+        "methods": [
+          "POST"
         ]
       },
       {
