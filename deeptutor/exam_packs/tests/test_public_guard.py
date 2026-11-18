@@ -64,10 +64,21 @@ def test_fork_files_contain_no_private_content() -> None:
         pytest.fail("\n".join(locations), pytrace=False)
 
 
-@pytest.mark.parametrize("encoding", ["utf-8", "utf-8-sig", "utf-16", "utf-32"])
-def test_guard_reports_fake_key_location(tmp_path: Path, encoding: str) -> None:
+@pytest.mark.parametrize(
+    ("encoding", "bom"),
+    [
+        pytest.param("utf-8", b"", id="utf-8"),
+        pytest.param("utf-8", BOM_UTF8, id="utf-8-bom"),
+        pytest.param("utf-16-le", BOM_UTF16_LE, id="utf-16-le"),
+        pytest.param("utf-16-be", BOM_UTF16_BE, id="utf-16-be"),
+        pytest.param("utf-32-le", BOM_UTF32_LE, id="utf-32-le"),
+        pytest.param("utf-32-be", BOM_UTF32_BE, id="utf-32-be"),
+    ],
+)
+def test_guard_reports_fake_key_location(tmp_path: Path, encoding: str, bom: bytes) -> None:
     path = tmp_path / "fork" / "example.txt"
     path.parent.mkdir()
-    path.write_text("Example\n" + "sk" + "-" + "x" * 20 + "\n", encoding=encoding)
+    content = "Example\n" + "sk" + "-" + "x" * 20 + "\n"
+    path.write_bytes(bom + content.encode(encoding))
 
     assert _private_content_locations(tmp_path) == ["fork/example.txt:2"]
