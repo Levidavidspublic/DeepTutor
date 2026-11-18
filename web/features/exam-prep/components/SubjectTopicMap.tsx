@@ -204,6 +204,7 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
   const [mockOpen, setMockOpen] = useState(false);
   const [studyLaunch, setStudyLaunch] = useState<StudyLaunch>({ status: "idle" });
   const studyInFlight = useRef(false);
+  const subjectPath = `/learning/exams/${encodeURIComponent(packId)}/${encodeURIComponent(subjectId)}`;
 
   useEffect(() => {
     let active = true;
@@ -242,8 +243,7 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
 
   function renderTopicActions(topicId: string) {
     const studyPending = studyLaunch.status === "pending";
-    const teachBackPath = `/learning/exams/${encodeURIComponent(packId)}/${encodeURIComponent(subjectId)}/teach-back`;
-    const teachBackHref = scopedUrl(`${teachBackPath}?${new URLSearchParams({ topic: topicId })}`);
+    const teachBackHref = scopedUrl(`${subjectPath}/teach-back?${new URLSearchParams({ topic: topicId })}`);
 
     return (
       <>
@@ -296,6 +296,12 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
           <Button variant="secondary" aria-haspopup="dialog" onClick={() => setGlossaryOpen(true)}>
             {glossaryLabel}
           </Button>
+          <Link
+            href={scopedUrl(`${subjectPath}/drill`)}
+            className={pageActionClass("secondary")}
+          >
+            {t("drill", { ns: "exam" })}
+          </Link>
           {subject.questionnaires.length > 0 && (
             <Button aria-haspopup="dialog" onClick={() => setMockOpen(true)}>
               {t("mock", { ns: "exam" })}
