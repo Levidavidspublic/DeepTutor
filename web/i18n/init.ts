@@ -2,6 +2,7 @@ import i18n, { type Resource } from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import enApp from "@/locales/en/app.json";
+import enExam from "@/locales/en/exam.json";
 import { normalizeLanguage, type AppLanguage } from "./languages";
 
 export { APP_LANGUAGES, isAppLanguage, normalizeLanguage } from "./languages";
@@ -13,7 +14,7 @@ export function initI18n(language?: unknown) {
   if (_initialized) return i18n;
 
   const resources: Resource = {
-    en: { app: enApp },
+    en: { app: enApp, exam: enExam },
   };
 
   i18n.use(initReactI18next).init({
@@ -24,7 +25,7 @@ export function initI18n(language?: unknown) {
     // We intentionally keep keySeparator disabled so keys like "Generating..." remain valid.
     // nsSeparator too: keys like "Query:" or "http://localhost:8080" would otherwise split as ns:key.
     defaultNS: "app",
-    ns: ["app"],
+    ns: ["app", "exam"],
     keySeparator: false,
     nsSeparator: false,
     interpolation: {
