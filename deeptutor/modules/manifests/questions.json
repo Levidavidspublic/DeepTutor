@@ -89,6 +89,17 @@
       },
       "auth": "learning",
       "order": 695
+    },
+    {
+      "reference": "deeptutor.api.routers.exam_packs:router",
+      "options": {
+        "prefix": "/api/exam-packs",
+        "tags": [
+          "exam-packs"
+        ]
+      },
+      "auth": "learning",
+      "order": 696
     }
   ],
   "commands": [],
