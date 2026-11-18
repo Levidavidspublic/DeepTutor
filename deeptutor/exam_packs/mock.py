@@ -1,16 +1,21 @@
-"""Build an original single-choice practice paper from questionnaire weights."""
+"""Build and store timed practice papers from questionnaire weights."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from fractions import Fraction
 from math import isfinite
+from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel
 
 from deeptutor.agents.question.pipeline import QuestionPipeline, QuestionType, QuizTemplate
 from deeptutor.core.context import UnifiedContext
 from deeptutor.runtime.stream_bus import StreamBus
+from deeptutor.services.file_io import atomic_write_json, read_text
+from deeptutor.services.path_service import get_path_service
 
 from .models import ExamPack, MockPaper, MockQuestion, Questionnaire, Subject
 
@@ -25,6 +30,54 @@ class InvalidMockInput(ValueError):
 
 class InvalidMockGeneration(ValueError):
     """The question pipeline did not produce a complete, scoreable paper."""
+
+
+class MockAttempt(BaseModel):
+    """Workspace record containing the timed paper and its scoring information."""
+
+    attempt_id: UUID
+    pack_id: str
+    subject_id: str
+    questionnaire_code: str
+    ui_lang: str
+    started_at: datetime
+    expires_at: datetime
+    minutes: int
+    questions: list[MockQuestion]
+    result: dict[str, Any] | None = None
+
+
+def _attempt_path(attempt_id: UUID) -> Path:
+    return get_path_service().user_data_dir / "exam_packs_state" / "attempts" / f"{attempt_id}.json"
+
+
+def save_mock_attempt(paper: MockPaper, ui_lang: str) -> MockAttempt:
+    try:
+        expires_at = paper.started_at + timedelta(minutes=paper.minutes)
+    except OverflowError:
+        raise InvalidMockInput("The questionnaire duration is too large.") from None
+
+    attempt = MockAttempt(
+        attempt_id=UUID(paper.attempt_id),
+        pack_id=paper.pack_id,
+        subject_id=paper.subject_id,
+        questionnaire_code=paper.questionnaire,
+        ui_lang=ui_lang,
+        started_at=paper.started_at,
+        expires_at=expires_at,
+        minutes=paper.minutes,
+        questions=paper.questions,
+    )
+    atomic_write_json(_attempt_path(attempt.attempt_id), attempt.model_dump(mode="json"))
+    return attempt
+
+
+def load_mock_attempt(attempt_id: UUID) -> MockAttempt | None:
+    try:
+        raw = read_text(_attempt_path(attempt_id))
+    except FileNotFoundError:
+        return None
+    return MockAttempt.model_validate_json(raw)
 
 
 class _MockQuestionPipeline(QuestionPipeline):
@@ -76,12 +129,13 @@ async def build_mock(pack: ExamPack, subject: Subject, questionnaire: Questionna
         templates_override=templates,
         stream=StreamBus(max_history=0),
     )
+    questions = _read_questions(payload, topic_ids, _allocate_points(weights))
     return MockPaper(
         attempt_id=uuid4().hex,
         pack_id=pack.id,
         subject_id=subject.id,
         questionnaire=questionnaire.code,
-        questions=_read_questions(payload, topic_ids, _allocate_points(weights)),
+        questions=questions,
         started_at=datetime.now(timezone.utc),
         minutes=minutes,
     )
