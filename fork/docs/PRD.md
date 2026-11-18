@@ -6,13 +6,13 @@ Status: draft for Amit's review. Gaps are `UNKNOWN`; inferred lines are `(EXTRAP
 
 ## Problem
 
-- Amit studies for the Israeli Bagrut as an external examinee: maths (3 units now, 5 later), history (22261, 22262) and civics (34281, 34282). Material is Hebrew; he learns best with English explanations that keep the Hebrew terms.
-- His current setup runs upstream DeepTutor plus a separate "study desk" server at `/study/desk`. The study tools open in a different page with a different look. He is unhappy with that: the point was to improve DeepTutor itself.
-- DeepTutor's UI is dense. For a learner with ADHD and severe dyslexia, long text, many panels and no read-aloud on every block make it hard to start and stay on task.
+- The first user studies for the Israeli Bagrut: maths (3 units now, 5 later), history (22261, 22262) and civics (34281, 34282). Material is Hebrew; explanations work best in English with the Hebrew terms kept.
+- The current setup runs upstream DeepTutor plus a separate "study desk" server at `/study/desk`. The study tools open in a different page with a different look. The point of the fork is to improve DeepTutor itself instead.
+- DeepTutor's UI is dense. For learners with ADHD or dyslexia, long text, many panels and no read-aloud on every block make it hard to start and stay on task.
 
 ## Users
 
-1. **Amit** - first user. Bagrut external examinee, English UI, Hebrew material, listens more than reads.
+1. **The owner (Amit)** - first user. Bagrut student, English UI, Hebrew material, likes read-aloud.
 2. **Any self-hoster** - a student preparing for a structured exam who wants DeepTutor with their own syllabus. (EXTRAPOLATED: this keeps the fork useful as public portfolio work.)
 
 ## Features
@@ -74,4 +74,4 @@ Parity target: everything on the private `/study/desk` page listed in F3. The de
 ## Sources
 - omni-tutor `study/src/*.ts` header comments (main, read 2026-11-18).
 - DeepTutor v1.7.3 tree: `web/app/(workspace)/learning/*`, `deeptutor/learning/*`, `AGENTS.md`.
-- Lane S fork check log, 2026-11-18. Amit's memory notes on DeepTutor and Bagrut study.
+- Lane S fork check log, 2026-11-18. Owner's notes on DeepTutor and Bagrut study.

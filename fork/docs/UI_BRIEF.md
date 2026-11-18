@@ -2,7 +2,7 @@
 
 **Verdict.** Keep DeepTutor's existing design system and components so the fork looks like one product. Add a small set of exam components and an accessibility layer that makes every study screen calm, short and listenable. No new visual language; fewer things on screen at once.
 
-## Principles (for an ADHD + dyslexia learner, and good for everyone)
+## Principles (for learners with ADHD or dyslexia, and good for everyone)
 1. One clear next step per screen. A primary button, at most two secondary ones.
 2. Short blocks: max ~60 words per text block before a break, cards over walls of text.
 3. Listen first: a read-aloud button on every content block; speed 0.5-2x; highlights the sentence being read. (EXTRAPOLATED: sentence highlight depends on the TTS giving timings - `UNKNOWN`.)
@@ -57,4 +57,4 @@ DeepTutor's web uses Tailwind (`web/tailwind.config.js`) and shared components i
 3. Should the read-aloud voice be the same one DeepTutor uses for video lessons?
 
 ## Sources
-- DeepTutor v1.7.3 `web/` (tailwind config, components, learning routes). Desk voice range: omni-tutor `study/src/voice.ts`. Amit's study format notes (short blocks, listens via TTS).
+- DeepTutor v1.7.3 `web/` (tailwind config, components, learning routes). Desk voice range: omni-tutor `study/src/voice.ts`. Owner's study-format preferences (short blocks, read-aloud).
