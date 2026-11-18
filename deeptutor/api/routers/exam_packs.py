@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, load_packs
 from deeptutor.exam_packs.glossary import find_terms
 
-router = APIRouter(prefix="/exam-packs", tags=["exam-packs"])
+router = APIRouter()
 
 _packs: list[ExamPack] | None = None
 _packs_lock = Lock()
@@ -80,7 +80,7 @@ def get_exam_subject(pack: str, subject: str) -> dict:
     raise HTTPException(status_code=404, detail="Exam subject not found")
 
 
-@router.get("/{pack}/glossary")
+@router.get("/{pack}/glossary", response_model=list[GlossaryTerm])
 def get_exam_glossary(pack: str, q: str | None = None) -> list[GlossaryTerm]:
     exam_pack = _get_pack(pack)
     return exam_pack.glossary if q is None else find_terms(exam_pack, q)

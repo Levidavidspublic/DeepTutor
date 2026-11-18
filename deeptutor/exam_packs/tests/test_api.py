@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 import pytest
 
+from deeptutor.api import module_routes
+from deeptutor.api.router_loader import RouterLoader
 from deeptutor.api.routers import exam_packs
+from deeptutor.api.routers.auth import require_learning_surface
 
 from .test_loader import pack_path as pack_path
 
@@ -14,7 +17,7 @@ def test_exam_pack_routes(pack_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     app = FastAPI()
-    app.include_router(exam_packs.router)
+    app.include_router(exam_packs.router, prefix="/exam-packs")
 
     with TestClient(app) as client:
         response = client.get("/exam-packs")
@@ -91,3 +94,23 @@ def test_exam_pack_routes(pack_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         assert response.status_code == 200
         assert response.json() == {"count": 1}
         assert client.get("/exam-packs").json()[0]["title"] == "Updated Sample Pack"
+
+
+def test_exam_pack_manifest_mount_uses_learning_auth(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DEEPTUTOR_HOME", str(tmp_path))
+    questions = module_routes.manifests()["questions"]
+    monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
+    app = FastAPI()
+    module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
+
+    def deny_learning_access() -> None:
+        raise HTTPException(status_code=403)
+
+    app.dependency_overrides[require_learning_surface] = deny_learning_access
+    with TestClient(app) as client:
+        assert client.get("/api/exam-packs").status_code == 403
+        assert client.get("/api/exam-packs/sample-pack/subjects/math").status_code == 403
+        assert client.get("/api/exam-packs/sample-pack/glossary").status_code == 403
+        assert client.post("/api/exam-packs/reload").status_code == 403
