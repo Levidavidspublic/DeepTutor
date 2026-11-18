@@ -190,7 +190,7 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
     },
 )
 async def submit_teach_back(pack: str, subject: str, topic: str, request: Request) -> TeachBackResult:
-    exam_pack = _get_pack(pack)
+    exam_pack = await run_in_threadpool(_get_pack, pack)
     exam_topic = _get_topic(exam_pack, subject, topic)
     # FastAPI's automatic body validation can echo rejected input in its error response.
     try:

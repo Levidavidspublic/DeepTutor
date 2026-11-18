@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 from shutil import copytree
+from threading import get_ident
 
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
@@ -285,6 +286,14 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
 async def test_teach_back_title_fallback_and_concurrent_appends(
     client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    event_loop_thread = get_ident()
+    load_packs = exam_packs.load_packs
+
+    def load_packs_off_loop():
+        assert get_ident() != event_loop_thread
+        return load_packs()
+
+    monkeypatch.setattr(exam_packs, "load_packs", load_packs_off_loop)
     graphs = pack_path / "topics" / "math" / "graphs.md"
     graphs.write_text(
         graphs.read_text(encoding="utf-8").replace("objectives: [Read a graph]", "objectives: []"),
