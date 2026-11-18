@@ -14,6 +14,10 @@ function examSubjectPath(packId: string, subjectId: string): string {
   return `${EXAM_PACKS_PATH}/${encodeURIComponent(packId)}/subjects/${encodeURIComponent(subjectId)}`;
 }
 
+function examTopicPath(packId: string, subjectId: string, topicId: string): string {
+  return `${examSubjectPath(packId, subjectId)}/topics/${encodeURIComponent(topicId)}`;
+}
+
 export function listExamPacks(): Promise<ExamPackSummary[]> {
   return requestJson(EXAM_PACKS_PATH, { method: "GET" });
 }
@@ -25,13 +29,21 @@ export function getExamSubject(
   return requestJson(examSubjectPath(packId, subjectId), { method: "GET" });
 }
 
+export function createMasteryLink(
+  packId: string,
+  subjectId: string,
+  topicId: string,
+): Promise<{ path_id: string }> {
+  return requestJson(`${examTopicPath(packId, subjectId, topicId)}/mastery-link`, { method: "POST" });
+}
+
 export function submitTeachBack(
   packId: string,
   subjectId: string,
   topicId: string,
   learnerText: string,
 ): Promise<TeachBackResult> {
-  const path = `${examSubjectPath(packId, subjectId)}/topics/${encodeURIComponent(topicId)}/teach-back`;
+  const path = `${examTopicPath(packId, subjectId, topicId)}/teach-back`;
   return requestJson(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
