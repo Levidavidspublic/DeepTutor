@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, timezone
 from threading import Lock
 
 from fastapi import APIRouter, HTTPException, Request
@@ -28,10 +29,17 @@ _packs: list[ExamPack] | None = None
 _packs_lock = Lock()
 
 
+class SubjectProgress(BaseModel):
+    done: int
+    total: int
+
+
 class SubjectSummary(BaseModel):
     id: str
     title: str
     title_source: str
+    progress: SubjectProgress
+    exam_date: date | None
 
 
 class PackSummary(BaseModel):
@@ -91,9 +99,44 @@ def _get_topic(exam_pack: ExamPack, subject_id: str, topic_id: str) -> Topic:
     raise HTTPException(status_code=404, detail="Exam topic not found")
 
 
+def _summarize_pack(pack: ExamPack, today: date) -> PackSummary:
+    topics_by_subject: dict[str, dict[str, Topic]] = {}
+    for topic in pack.topics:
+        subject_topics = topics_by_subject.setdefault(topic.subject_id, {})
+        subject_topics.setdefault(topic.id, topic)
+
+    subjects = []
+    for subject in pack.subjects:
+        topics = topics_by_subject.get(subject.id, {})
+        subjects.append(
+            SubjectSummary(
+                id=subject.id,
+                title=subject.title,
+                title_source=subject.title_source,
+                progress=SubjectProgress(
+                    done=sum(get_topic_status(pack.id, topic) == "done" for topic in topics.values()),
+                    total=len(topics),
+                ),
+                exam_date=min(
+                    (exam_date for exam_date in subject.exam_dates or [] if exam_date >= today),
+                    default=None,
+                ),
+            )
+        )
+    return PackSummary(
+        id=pack.id,
+        title=pack.title,
+        exam=pack.exam,
+        source_lang=pack.source_lang,
+        ui_lang=pack.ui_lang,
+        subjects=subjects,
+    )
+
+
 @router.get("", response_model=list[PackSummary])
-def list_exam_packs() -> list[ExamPack]:
-    return _get_packs()
+def list_exam_packs() -> list[PackSummary]:
+    today = datetime.now(timezone.utc).date()
+    return [_summarize_pack(pack, today) for pack in _get_packs()]
 
 
 @router.get("/{pack}/subjects/{subject}", response_model=SubjectDetail)
