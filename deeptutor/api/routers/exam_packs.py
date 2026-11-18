@@ -11,6 +11,16 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, Subject, load_packs
+from deeptutor.exam_packs.decks import (
+    Deck,
+    DeckKind,
+    DeckSummary,
+    import_deck,
+    InvalidDeckInput,
+    list_decks,
+    load_deck,
+    save_deck,
+)
 from deeptutor.exam_packs.glossary import find_terms
 from deeptutor.exam_packs.links import get_or_create_mastery_link
 from deeptutor.exam_packs.mock import (
@@ -77,6 +87,12 @@ class SubjectDetail(BaseModel):
     ui_lang: str
     questionnaires: list[Questionnaire]
     topics: list[TopicSummary]
+
+
+class ImportDeckRequest(BaseModel):
+    title: str
+    kind: DeckKind
+    text: str
 
 
 class StartMockRequest(BaseModel):
@@ -202,6 +218,53 @@ def get_exam_subject(pack: str, subject: str) -> SubjectDetail:
             if topic.subject_id == subject
         ],
     )
+
+
+@router.post(
+    "/{pack}/subjects/{subject}/decks",
+    response_model=Deck,
+    response_model_exclude_none=True,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": ImportDeckRequest.model_json_schema()}},
+        }
+    },
+)
+async def create_exam_deck(pack: str, subject: str, request: Request) -> Deck:
+    _get_subject(_get_pack(pack), subject)
+    # FastAPI's automatic validation can include the submitted card text in a 422.
+    try:
+        body = ImportDeckRequest.model_validate(await request.json())
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail="Expected a title, kind (csv or anki), and text"
+        ) from None
+    try:
+        deck = await run_in_threadpool(import_deck, body.text, body.kind, title=body.title)
+    except InvalidDeckInput as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    await run_in_threadpool(save_deck, deck, pack, subject)
+    return deck
+
+
+@router.get("/{pack}/subjects/{subject}/decks", response_model=list[DeckSummary])
+def list_exam_decks(pack: str, subject: str) -> list[DeckSummary]:
+    _get_subject(_get_pack(pack), subject)
+    return list_decks(pack, subject)
+
+
+@router.get(
+    "/{pack}/subjects/{subject}/decks/{deck_id}",
+    response_model=Deck,
+    response_model_exclude_none=True,
+)
+def get_exam_deck(pack: str, subject: str, deck_id: UUID) -> Deck:
+    _get_subject(_get_pack(pack), subject)
+    deck = load_deck(deck_id, pack, subject)
+    if deck is None:
+        raise HTTPException(status_code=404, detail="Exam deck not found")
+    return deck
 
 
 @router.post("/{pack}/subjects/{subject}/topics/{topic}/mastery-link")
