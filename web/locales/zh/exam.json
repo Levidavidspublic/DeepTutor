@@ -1,0 +1,19 @@
+{
+  "title": "Exam prep",
+  "empty.title": "No exam packs yet",
+  "empty.body": "Add an exam pack to get started.",
+  "subjects": "Subjects",
+  "progress": "Progress",
+  "nextSession": "Next session",
+  "examDate": "Exam date",
+  "continue": "Continue",
+  "study": "Study",
+  "teachBack": "Teach back",
+  "drill": "Drill",
+  "mock": "Mock exam",
+  "glossary": "Glossary",
+  "focus.on": "Turn on focus mode",
+  "focus.off": "Turn off focus mode",
+  "readAloud": "Read aloud",
+  "rtlNote": "Read this text from right to left."
+}
