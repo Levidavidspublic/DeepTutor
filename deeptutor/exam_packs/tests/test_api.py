@@ -11,10 +11,11 @@ import pytest_asyncio
 from deeptutor.api import module_routes
 from deeptutor.api.router_loader import RouterLoader
 from deeptutor.api.routers import exam_packs
-from deeptutor.api.routers.auth import require_learning_surface
+from deeptutor.api.routers.auth import require_auth, require_learning_surface
 from deeptutor.exam_packs import teachback
 from deeptutor.learning.models import RepetitionState, ReviewTask
 from deeptutor.learning.storage import LearningStore
+from deeptutor.multi_user import learning_access
 from deeptutor.services.llm import LLMConfigError, LLMError
 from deeptutor.services.path_service import PathService
 
@@ -361,9 +362,11 @@ async def test_subject_status_falls_back_to_linked_mastery(
 
 
 async def test_exam_pack_manifest_mount_uses_learning_auth(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("DEEPTUTOR_HOME", str(tmp_path))
+    monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
+    monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
     exam_route = next(
         route for route in questions["routes"] if route["reference"].endswith(".exam_packs:router")
@@ -387,3 +390,28 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
         assert (await client.post("/api/exam-packs/reload")).status_code == 403
         response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
         assert response.status_code == 403
+
+        async def authenticated_learner() -> None:
+            pass
+
+        async def complete(*args, **kwargs) -> str:
+            return json.dumps({"verdict": "got it", "missing": [], "feedback": "Clear explanation."})
+
+        del app.dependency_overrides[require_learning_surface]
+        app.dependency_overrides[require_auth] = authenticated_learner
+        policy = {"allowed_surfaces": ["reading"]}
+        monkeypatch.setattr(learning_access, "current_learning_policy", lambda: policy)
+        monkeypatch.setattr(teachback, "complete", complete)
+        assert (await client.get("/api/exam-packs")).status_code == 403
+        assert (await client.get(SUBJECT_URL)).status_code == 403
+        response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
+        assert response.status_code == 403
+        assert not state_dir.exists()
+
+        policy["allowed_surfaces"] = ["chat"]
+        assert (await client.get("/api/exam-packs")).status_code == 200
+        response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
+        assert response.status_code == 200
+        subject = await client.get(SUBJECT_URL)
+        assert subject.status_code == 200
+        assert subject.json()["topics"][0]["status"] == "done"
