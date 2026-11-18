@@ -56,7 +56,7 @@ Exact prefix and auth dependency: copy whatever `routers/practice.py` uses (code
 
 ## Constraints
 
-- Public repo: no private content, no keys, no personal data. A CI-free check: `git grep -nE "Amit|amitlevin|SOUL.md"` returns nothing in fork files (added as a pytest).
+- Public repo: no private content, no keys, no personal data. A pytest privacy guard (ticket EP-05) scans fork-owned files for private markers and key-shaped strings.
 - Upstream merge path: new code in new files. Upstream files allowed to change: `router_loader.py` (1 line), `pyproject.toml` testpaths (1 line), the Learning tab list (1 entry), locale folders (new `exam.json` files only), settings section registry (1 entry). Each listed in `fork/UPSTREAM.md`.
 - Tests: Python `pytest deeptutor/exam_packs/tests -q`; web `npm run typecheck`, `npx vitest run <file>`, `npm run i18n:check`, `npm run lint`. A full `npm run check` is too slow per ticket; run on the docs PR and weekly. (EXTRAPOLATED)
 - Runtime on the VPS: Python 3.13 venv at `/workspaces/.venv-deeptutor`, Node 24 (upstream asks Node 22 LTS; 24 is used for now - mismatch noted).
