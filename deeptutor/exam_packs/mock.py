@@ -1,4 +1,4 @@
-"""Build and store timed practice papers from questionnaire weights."""
+"""Build, store and mark timed practice papers."""
 
 from __future__ import annotations
 
@@ -13,23 +13,48 @@ from pydantic import BaseModel
 
 from deeptutor.agents.question.pipeline import QuestionPipeline, QuestionType, QuizTemplate
 from deeptutor.core.context import UnifiedContext
+from deeptutor.learning.grading import grade_answer
 from deeptutor.runtime.stream_bus import StreamBus
 from deeptutor.services.file_io import atomic_write_json, read_text
 from deeptutor.services.path_service import get_path_service
+from deeptutor.services.session.migration_lock import exclusive_lock
 
 from .models import ExamPack, MockPaper, MockQuestion, Questionnaire, Subject
 
 _OPTION_KEYS = ("A", "B", "C", "D")
 _PAPER_POINTS = 100
 _MAX_TOPICS = 5
+_SUBMISSION_GRACE = timedelta(seconds=5)
 
 
 class InvalidMockInput(ValueError):
-    """The questionnaire cannot be used to build a mock paper."""
+    """The questionnaire or submitted answers are invalid."""
 
 
 class InvalidMockGeneration(ValueError):
     """The question pipeline did not produce a complete, scoreable paper."""
+
+
+class ExpiredMockAttempt(ValueError):
+    """The server's submission deadline has passed."""
+
+
+class MockMark(BaseModel):
+    points: int
+    feedback: str
+    skipped: bool
+
+
+class MockResult(BaseModel):
+    attempt_id: UUID
+    marks: dict[str, MockMark]
+    total: int
+    max_total: int
+    submitted_at: datetime
+
+
+class MockSubmission(MockResult):
+    answers: dict[str, str]
 
 
 class MockAttempt(BaseModel):
@@ -44,7 +69,7 @@ class MockAttempt(BaseModel):
     expires_at: datetime
     minutes: int
     questions: list[MockQuestion]
-    result: dict[str, Any] | None = None
+    result: MockSubmission | None = None
 
 
 def _attempt_path(attempt_id: UUID) -> Path:
@@ -78,6 +103,52 @@ def load_mock_attempt(attempt_id: UUID) -> MockAttempt | None:
     except FileNotFoundError:
         return None
     return MockAttempt.model_validate_json(raw)
+
+
+def submit_mock_attempt(attempt_id: UUID, answers: dict[str, str]) -> MockResult | None:
+    """Record the first valid submission, or return the result already on disk."""
+    path = _attempt_path(attempt_id)
+    if not path.is_file():
+        return None
+
+    # Lock a separate file so the lock still applies after replacing the attempt JSON.
+    with exclusive_lock(path.with_suffix(".lock")):
+        attempt = load_mock_attempt(attempt_id)
+        if attempt is None:
+            return None
+
+        if answers.keys() - {question.id for question in attempt.questions}:
+            raise InvalidMockInput("Answers contain an unknown question ID.")
+        if any(answer not in _OPTION_KEYS for answer in answers.values()):
+            raise InvalidMockInput("Answers must be A, B, C or D.")
+        if attempt.result is not None:
+            return attempt.result
+
+        submitted_at = datetime.now(timezone.utc)
+        if submitted_at - attempt.expires_at > _SUBMISSION_GRACE:
+            raise ExpiredMockAttempt("Mock attempt has expired.")
+
+        marks = {}
+        for question in attempt.questions:
+            answer = answers.get(question.id)
+            correct = answer is not None and grade_answer(
+                answer, question.correct_option, question_type="choice"
+            )
+            marks[question.id] = MockMark(
+                points=question.points if correct else 0,
+                feedback=question.rationale,
+                skipped=answer is None,
+            )
+        attempt.result = MockSubmission(
+            attempt_id=attempt_id,
+            answers=answers,
+            marks=marks,
+            total=sum(mark.points for mark in marks.values()),
+            max_total=sum(question.points for question in attempt.questions),
+            submitted_at=submitted_at,
+        )
+        atomic_write_json(path, attempt.model_dump(mode="json"))
+        return attempt.result
 
 
 class _MockQuestionPipeline(QuestionPipeline):

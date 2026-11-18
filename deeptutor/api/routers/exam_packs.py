@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from threading import Lock
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
@@ -15,10 +14,13 @@ from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, Subject,
 from deeptutor.exam_packs.glossary import find_terms
 from deeptutor.exam_packs.links import get_or_create_mastery_link
 from deeptutor.exam_packs.mock import (
+    ExpiredMockAttempt,
     InvalidMockInput,
+    MockResult,
     build_mock,
     load_mock_attempt,
     save_mock_attempt,
+    submit_mock_attempt,
 )
 from deeptutor.exam_packs.models import Topic
 from deeptutor.exam_packs.teachback import (
@@ -82,6 +84,10 @@ class StartMockRequest(BaseModel):
     questionnaire_code: str
 
 
+class SubmitMockRequest(BaseModel):
+    answers: dict[str, str]
+
+
 class MockQuestionResponse(BaseModel):
     id: str
     topic_id: str
@@ -100,7 +106,7 @@ class MockAttemptResponse(BaseModel):
     expires_at: datetime
     minutes: int
     questions: list[MockQuestionResponse]
-    result: dict[str, Any] | None
+    result: MockResult | None
 
 
 def _get_packs(*, reload: bool = False) -> list[ExamPack]:
@@ -288,6 +294,19 @@ def get_mock_attempt(attempt_id: UUID) -> MockAttemptResponse:
     if attempt is None:
         raise HTTPException(status_code=404, detail="Mock attempt not found")
     return MockAttemptResponse.model_validate(attempt, from_attributes=True)
+
+
+@router.post("/mock/{attempt_id}/submit", response_model=MockResult)
+def submit_mock(attempt_id: UUID, request: SubmitMockRequest) -> MockResult:
+    try:
+        result = submit_mock_attempt(attempt_id, request.answers)
+    except InvalidMockInput as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    except ExpiredMockAttempt as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    if result is None:
+        raise HTTPException(status_code=404, detail="Mock attempt not found")
+    return result
 
 
 @router.post("/reload")
