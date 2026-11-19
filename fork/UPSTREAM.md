@@ -9,7 +9,8 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 4. Run `npm run typecheck && npm run i18n:check` from `web/` for every sync.
    If `deeptutor/exam_packs/tests` exists in the checkout, also run
    `pytest deeptutor/exam_packs/tests -q` from the repository root.
-5. Open a PR to `main`. Amit merges.
+5. Push the completed sync branch to the fork with `git push origin sync/upstream-<tag>`.
+6. Open a PR from `sync/upstream-<tag>` to `main`. Amit merges.
 
 ## Upstream files the fork is allowed to touch
 | File | Change |
