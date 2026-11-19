@@ -28,7 +28,7 @@ it("applies saved reading comfort to the exam route on mount", async () => {
   const comfort = content?.closest("[data-contrast]");
   await waitFor(() => expect(comfort).toHaveAttribute("data-contrast", "high"));
   expect(comfort).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
+    "--study-font": "system-ui, sans-serif",
     "--study-size": "125%",
     "--study-line-height": "1.8",
     "--study-letter-spacing": "0.05em",

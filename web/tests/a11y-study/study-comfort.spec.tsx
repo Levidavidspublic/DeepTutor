@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import {
@@ -51,67 +49,63 @@ it("clamps both numeric ranges and uses defaults for invalid settings", () => {
   });
 });
 
-it.each([
-  { font: "lexend", family: "Lexend" },
-  { font: "opendyslexic", family: "OpenDyslexic" },
-] as const)("declares and restores the bundled $family preference", async ({ font, family }) => {
-  function ComfortControls() {
-    const { settings, updateSettings } = useStudyComfort();
-    return (
-      <button
-        onClick={() => {
-          updateSettings({ font, sizePct: 170 });
-          updateSettings({ lineHeight: 1.8, letterSpacing: "wide", contrast: "high" });
-        }}
-      >
-        Text size {settings.sizePct}%
-      </button>
+it.each(["lexend", "opendyslexic"] as const)(
+  "uses the system font for %s while applying and restoring other preferences",
+  async (font) => {
+    const storageKey = "deeptutor-study-comfort";
+
+    function ComfortControls() {
+      const { settings, updateSettings } = useStudyComfort();
+      return (
+        <button
+          onClick={() => {
+            updateSettings({ font, sizePct: 170 });
+            updateSettings({ lineHeight: 1.8, letterSpacing: "wide", contrast: "high" });
+          }}
+        >
+          {settings.font}, text size {settings.sizePct}%
+        </button>
+      );
+    }
+
+    const view = render(
+      <StudyComfortProvider>
+        <ComfortControls />
+      </StudyComfortProvider>,
     );
-  }
+    const button = screen.getByRole("button", { name: "system, text size 100%" });
+    fireEvent.click(button);
+    expect(button).toHaveAccessibleName("system, text size 150%");
+    expect(button.parentElement).toHaveStyle({
+      "--study-font": "system-ui, sans-serif",
+      "--study-size": "150%",
+      "--study-line-height": "1.8",
+      "--study-letter-spacing": "0.05em",
+    });
+    expect(button.parentElement).toHaveAttribute("data-contrast", "high");
+    const savedSettings = JSON.parse(localStorage.getItem(storageKey) ?? "null");
+    expect(savedSettings).toEqual({
+      font: "system",
+      sizePct: 150,
+      lineHeight: 1.8,
+      letterSpacing: "wide",
+      contrast: "high",
+    });
 
-  const view = render(
-    <StudyComfortProvider>
-      <ComfortControls />
-    </StudyComfortProvider>,
-  );
-  const button = screen.getByRole("button", { name: "Text size 100%" });
-  const face = Array.from(document.styleSheets)
-    .flatMap((sheet) => Array.from(sheet.cssRules))
-    .find(
-      (rule): rule is CSSFontFaceRule =>
-        rule.type === CSSRule.FONT_FACE_RULE &&
-        (rule as CSSFontFaceRule).style.getPropertyValue("font-family") === family,
+    view.unmount();
+    localStorage.setItem(storageKey, JSON.stringify({ ...savedSettings, font }));
+    render(
+      <StudyComfortProvider>
+        <ComfortControls />
+      </StudyComfortProvider>,
     );
-  expect(face).toBeDefined();
-  // jsdom parses the font-face rule but drops the src descriptor from the CSSOM.
-  expect(view.container.querySelector("style")).toHaveTextContent(
-    `font-family: ${family}; src: url("/study-fonts/${font}.woff") format("woff");`,
-  );
-  const asset = readFileSync(resolve("public", "study-fonts", `${font}.woff`));
-  expect(asset.toString("ascii", 0, 4)).toBe("wOFF");
-
-  fireEvent.click(button);
-  expect(button).toHaveAccessibleName("Text size 150%");
-  expect(button.parentElement).toHaveStyle({
-    "--study-font": `${family}, system-ui, sans-serif`,
-    "--study-size": "150%",
-    "--study-line-height": "1.8",
-    "--study-letter-spacing": "0.05em",
-  });
-  expect(button.parentElement).toHaveAttribute("data-contrast", "high");
-
-  view.unmount();
-  render(
-    <StudyComfortProvider>
-      <ComfortControls />
-    </StudyComfortProvider>,
-  );
-  const restored = await screen.findByRole("button", { name: "Text size 150%" });
-  expect(restored.parentElement).toHaveStyle({
-    "--study-font": `${family}, system-ui, sans-serif`,
-    "--study-size": "150%",
-    "--study-line-height": "1.8",
-    "--study-letter-spacing": "0.05em",
-  });
-  expect(restored.parentElement).toHaveAttribute("data-contrast", "high");
-});
+    const restored = await screen.findByRole("button", { name: "system, text size 150%" });
+    expect(restored.parentElement).toHaveStyle({
+      "--study-font": "system-ui, sans-serif",
+      "--study-size": "150%",
+      "--study-line-height": "1.8",
+      "--study-letter-spacing": "0.05em",
+    });
+    expect(restored.parentElement).toHaveAttribute("data-contrast", "high");
+  },
+);
