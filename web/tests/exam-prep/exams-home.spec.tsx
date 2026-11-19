@@ -5,7 +5,9 @@ import Page from "@/app/(workspace)/learning/exams/page";
 import { listExamPacks } from "@/features/exam-prep/api";
 import type { ExamPackSummary } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
+import deApp from "@/locales/de/app.json";
 import deExam from "@/locales/de/exam.json";
+import viExam from "@/locales/vi/exam.json";
 
 vi.mock("@/features/exam-prep/api", () => ({ listExamPacks: vi.fn() }));
 
@@ -80,23 +82,101 @@ it("lists subjects with their pack language and no links to unavailable subject 
   const card = screen.getByRole("article", { name: "Demo Exam Pack" });
   const subjects = within(card).getByRole("list", { name: "Subjects" });
   expect(within(subjects).getAllByRole("listitem")).toHaveLength(2);
-  expect(within(subjects).queryAllByRole("link")).toHaveLength(0);
+  expect(within(card).queryByRole("link")).not.toBeInTheDocument();
   for (const { title } of pack.subjects) {
-    const subject = within(subjects).getByText(title);
+    const subject = within(subjects).getByText(title, { exact: true });
     expect(subject).toBeVisible();
     expect(subject).toHaveAttribute("lang", pack.ui_lang);
   }
 });
 
-it("uses German copy for the heading, empty state, and subject list when the resource is loaded", async () => {
+it("shows each subject's progress and any upcoming exam date", async () => {
+  vi.mocked(listExamPacks).mockResolvedValueOnce([
+    {
+      ...pack,
+      subjects: [
+        { ...pack.subjects[0], progress: { done: 1, total: 4 }, exam_date: "2030-11-18" },
+        { ...pack.subjects[1], progress: { done: 3, total: 4 }, exam_date: null },
+        {
+          id: "history",
+          title: "History",
+          title_source: "History",
+          progress: { done: 0, total: 2 },
+        },
+      ],
+    },
+  ]);
+
+  await act(async () => {
+    render(<Page />);
+  });
+
+  const card = screen.getByRole("article", { name: "Demo Exam Pack" });
+  const [math, science, history] = within(card).getAllByRole("listitem");
+  const mathProgress = within(math).getByRole("progressbar", {
+    name: "Progress",
+    value: { min: 0, max: 4, now: 1 },
+  });
+  const scienceProgress = within(science).getByRole("progressbar", {
+    name: "Progress",
+    value: { min: 0, max: 4, now: 3 },
+  });
+  const historyProgress = within(history).getByRole("progressbar", {
+    name: "Progress",
+    value: { min: 0, max: 2, now: 0 },
+  });
+  expect(mathProgress).toHaveTextContent("25%");
+  expect(mathProgress).toHaveAttribute("aria-valuetext", "1 / 4");
+  expect(scienceProgress).toHaveTextContent("75%");
+  expect(scienceProgress).toHaveAttribute("aria-valuetext", "3 / 4");
+  expect(historyProgress).toHaveTextContent("0%");
+  expect(historyProgress).toHaveAttribute("aria-valuetext", "0 / 2");
+  expect(within(math).getByText("Exam date")).toBeVisible();
+  expect(within(math).getByText("Nov 18, 2030")).toHaveAttribute("datetime", "2030-11-18");
+  expect(within(science).queryByText("Exam date")).not.toBeInTheDocument();
+});
+
+it("omits missing dates and progress when the fields are absent or there are zero topics", async () => {
+  vi.mocked(listExamPacks).mockResolvedValueOnce([
+    {
+      ...pack,
+      subjects: [pack.subjects[0], { ...pack.subjects[1], progress: { done: 0, total: 0 } }],
+    },
+  ]);
+
+  await act(async () => {
+    render(<Page />);
+  });
+
+  const card = screen.getByRole("article", { name: "Demo Exam Pack" });
+  expect(within(card).getByText("Math")).toBeVisible();
+  expect(within(card).getByText("Science")).toBeVisible();
+  expect(within(card).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(card).queryByText("Exam date")).not.toBeInTheDocument();
+});
+
+it("uses German copy and date formatting when the German resource is loaded", async () => {
   const germanI18n = i18n.cloneInstance({ lng: "de", forkResourceStore: true });
+  germanI18n.addResourceBundle("de", "app", deApp);
   germanI18n.addResourceBundle("de", "exam", deExam);
   const page = (
     <I18nextProvider i18n={germanI18n}>
       <Page />
     </I18nextProvider>
   );
-  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([pack]);
+  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([
+    {
+      ...pack,
+      subjects: [
+        { ...pack.subjects[0], progress: { done: 1, total: 4 } },
+        {
+          ...pack.subjects[1],
+          progress: { done: 0, total: 0 },
+          exam_date: "2030-11-18",
+        },
+      ],
+    },
+  ]);
 
   const { unmount } = render(page);
   expect(await screen.findByRole("heading", { name: "Noch keine Prüfungspakete" })).toBeVisible();
@@ -108,8 +188,35 @@ it("uses German copy for the heading, empty state, and subject list when the res
   const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
   const subjects = within(card).getByRole("list", { name: "Fächer" });
   expect(within(card).getByText("Fächer")).toBeVisible();
+  const [math, science] = within(subjects).getAllByRole("listitem");
+  expect(within(math).getByText("Math")).toBeVisible();
+  expect(within(science).getByText("Science")).toBeVisible();
+  expect(within(math).getByRole("progressbar", { name: "Fortschritt" })).toBeVisible();
+  expect(within(science).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(science).getByText("Prüfungstermin")).toBeVisible();
+  expect(within(science).getByText("18.11.2030")).toHaveAttribute("datetime", "2030-11-18");
+});
+
+it("uses Vietnamese copy for the heading, empty state, and subject list when the resource is loaded", async () => {
+  const vietnameseI18n = i18n.cloneInstance({ lng: "vi", forkResourceStore: true });
+  vietnameseI18n.addResourceBundle("vi", "exam", viExam);
+  const page = (
+    <I18nextProvider i18n={vietnameseI18n}>
+      <Page />
+    </I18nextProvider>
+  );
+  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([pack]);
+
+  const { unmount } = render(page);
+  expect(await screen.findByRole("heading", { name: "Chưa có gói ôn thi nào" })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: "Ôn thi" })).toBeVisible();
+  expect(screen.getByText("Thêm một gói ôn thi để bắt đầu.")).toBeVisible();
+  unmount();
+
+  render(page);
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  const subjects = within(card).getByRole("list", { name: "Môn học" });
   expect(within(subjects).getByText("Math")).toBeVisible();
-  expect(within(subjects).getByText("Science")).toBeVisible();
 });
 
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {
