@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test } from "vitest";
 
 import { initI18n } from "@/i18n/init";
+import zhExam from "@/locales/zh/exam.json";
 
 const localesDir = path.join(import.meta.dirname, "../../locales");
 const otherLocales = readdirSync(localesDir, { withFileTypes: true })
@@ -41,6 +42,12 @@ test("en/exam.json contains the Phase 1 keys", () => {
 
 test.each(otherLocales)("%s/exam.json matches the English key set", (locale) => {
   expect(examKeys(locale)).toEqual(englishKeys);
+});
+
+test("zh/exam.json uses Chinese text for every exam label", () => {
+  for (const [key, label] of Object.entries(zhExam)) {
+    expect(label, key).toMatch(/\p{Script=Han}/u);
+  }
 });
 
 test("the exam namespace resolves a Phase 1 string through the English fallback", () => {
