@@ -67,7 +67,6 @@ describe.skip('S2 study plan links and next sessions KITCHEN-PENDING #65', () =>
   it('links each subject to its own plan in the active workspace and keeps Continue on S3', async () => {
     window.history.replaceState(null, '', '/learning/exams?dt_workspace=study+room')
     mockPackList([math, science])
-    // @ts-expect-error KITCHEN-PENDING #65 not built yet
     const { ExamsHome }: typeof import('@/features/exam-prep/components/ExamsHome') = await import(
       /* @vite-ignore */ examsHomePath
     )
@@ -99,7 +98,6 @@ describe.skip('S2 study plan links and next sessions KITCHEN-PENDING #65', () =>
     'renders a localized date and time from the pack list in %s',
     async locale => {
       const requests = mockPackList([{ ...math, next_session: start }])
-      // @ts-expect-error KITCHEN-PENDING #65 not built yet
       const { ExamsHome }: typeof import('@/features/exam-prep/components/ExamsHome') =
         await import(/* @vite-ignore */ examsHomePath)
       const card = await renderHome(ExamsHome, locale)
@@ -138,7 +136,6 @@ describe.skip('S2 study plan links and next sessions KITCHEN-PENDING #65', () =>
         exam_date: examDate,
       },
     ])
-    // @ts-expect-error KITCHEN-PENDING #65 not built yet
     const { ExamsHome }: typeof import('@/features/exam-prep/components/ExamsHome') = await import(
       /* @vite-ignore */ examsHomePath
     )
