@@ -105,6 +105,7 @@ describe.skip("Study comfort settings KITCHEN-PENDING #182", () => {
     const stored = () => localStorage.getItem(storageKey);
     const savedSettings = () => JSON.parse(stored() ?? "{}");
 
+    // #182 requires the provider to persist and restore the selected OpenDyslexic font.
     await user.selectOptions(font(), within(font()).getByRole("option", { name: /^opendyslexic$/i }));
     expect(savedSettings()).toMatchObject({ font: "opendyslexic" });
     fireEvent.change(textSize(), { target: { value: "130" } });
