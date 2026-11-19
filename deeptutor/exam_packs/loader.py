@@ -55,9 +55,13 @@ def _read_pack(path: Path) -> ExamPack:
 
     topics = [_read_topic(file) for file in sorted(path.glob("topics/*/*.md"))]
     glossary = _read_glossary(path / "glossary.csv")
-    return _PACK_ADAPTER.validate_python(
+    pack = _PACK_ADAPTER.validate_python(
         {**metadata, "path": path, "topics": topics, "glossary": glossary}
     )
+    topic_identities = {(topic.subject_id, topic.id) for topic in pack.topics}
+    if len(topic_identities) != len(pack.topics):
+        raise ValueError("Topic IDs must be unique within each subject")
+    return pack
 
 
 def _read_topic(path: Path) -> dict[str, Any]:
