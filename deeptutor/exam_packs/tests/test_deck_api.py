@@ -86,14 +86,19 @@ async def client(pack_path, decks_dir, monkeypatch):
                         "back": "An inequality like `x < 2`.",
                         "page_title": "Example page",
                         "card_id": "example-card",
-                    }
+                    },
+                    {
+                        "front": "Example\n```text\nFirst line\nSecond line\n```\nDone.",
+                        "back": "Answer",
+                    },
                 ]
             ),
             [
                 {
                     "front": "Rule & example\nNext line\n\nNext paragraph",
                     "back": "An inequality like x < 2.",
-                }
+                },
+                {"front": "Example\nFirst line\nSecond line\nDone.", "back": "Answer"},
             ],
         ),
         (

@@ -59,6 +59,7 @@ class _CardText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
         self.hidden_depth = 0
+        self.pending_breaks = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _HIDDEN_TAGS:
@@ -66,17 +67,22 @@ class _CardText(HTMLParser):
         elif not self.hidden_depth:
             if tag == "br":
                 self.parts.append("\n")
+                self.pending_breaks = max(0, self.pending_breaks - 1)
             elif tag in _BLOCK_TAGS and self.parts and not self.parts[-1].endswith("\n"):
-                self.parts.append("\n")
+                self.pending_breaks = max(1, self.pending_breaks)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in _HIDDEN_TAGS and self.hidden_depth:
             self.hidden_depth -= 1
         elif not self.hidden_depth and tag in _BLOCK_TAGS:
-            self.parts.append("\n\n" if tag == "p" else "\n")
+            self.pending_breaks = max(self.pending_breaks, 2 if tag == "p" else 1)
 
     def handle_data(self, data: str) -> None:
         if not self.hidden_depth:
+            # A following <br> can supply the break at an HTML block boundary.
+            if self.pending_breaks:
+                self.parts.append("\n" * self.pending_breaks)
+                self.pending_breaks = 0
             self.parts.append(data)
 
 
