@@ -2,6 +2,8 @@ interface ExamSubjectSummary {
   id: string;
   title: string;
   title_source: string;
+  progress?: { done: number; total: number };
+  exam_date?: string | null;
 }
 
 interface ExamQuestionnaire {
