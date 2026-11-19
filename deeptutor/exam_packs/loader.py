@@ -20,6 +20,10 @@ _PACK_ADAPTER = TypeAdapter(ExamPack)
 _GLOSSARY_COLUMNS = {"term_source", "term_ui", "note", "topic_ids"}
 
 
+class _DuplicatePackIdError(ValueError):
+    """A previously loaded pack already uses the ID."""
+
+
 def get_packs_root() -> Path:
     """Return the configured exam packs directory."""
     return Path(os.environ.get("DEEPTUTOR_EXAM_PACKS_DIR") or "data/user/exam_packs")
@@ -38,10 +42,15 @@ def load_packs(root: Path | None = None) -> list[ExamPack]:
         return []
 
     packs: list[ExamPack] = []
+    loaded_ids: set[str] = set()
     for path in paths:
         try:
             if path.is_dir():
-                packs.append(_read_pack(path))
+                pack = _read_pack(path)
+                if pack.id in loaded_ids:
+                    raise _DuplicatePackIdError
+                packs.append(pack)
+                loaded_ids.add(pack.id)
         except Exception as exc:
             # Parser errors can include excerpts from private pack files.
             logger.warning("Skipping broken exam pack %s (%s)", path.name, type(exc).__name__)
