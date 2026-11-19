@@ -17,6 +17,7 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 | `deeptutor/modules/manifests/questions.json` | Register `routers/exam_packs.py` with learning auth |
 | `deeptutor/api/routers/auth.py` | Map `/api/exam-packs` to the `chat` learner surface |
 | `deeptutor/api/router_index.json` | Generated routing entries and fingerprint for lazy loading |
+| `deeptutor/services/calendar/store.py` | Add atomic batch creation with stable IDs for exam study sessions |
 | `pyproject.toml` | one entry in pytest `testpaths` |
 | `web/components/learning/LearningDashboard.tsx` | Workspace-scoped Exams link next to the modern Learning filters |
 | `web/features/ui-layout/classic/ClassicLearningDashboard.tsx` | Workspace-scoped Exams link alongside the classic Learning choices |
