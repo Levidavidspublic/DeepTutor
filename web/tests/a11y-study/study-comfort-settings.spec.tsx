@@ -1,13 +1,21 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  StudyComfortProvider,
+  useStudyComfort,
+} from "@/features/a11y-study/StudyComfortProvider";
 import { initI18n } from "@/i18n/init";
 import {
   SETTINGS_PAGE_GROUPS,
   visibleSettingsPages,
 } from "@/features/settings/navigation/settings-pages";
+
+vi.mock("next/font/google", () => ({
+  Lexend: () => ({ style: { fontFamily: "__Lexend_test, system-ui, sans-serif" } }),
+}));
 
 const storageKey = "deeptutor-study-comfort";
 const localesDir = join(import.meta.dirname, "../../locales");
@@ -44,6 +52,26 @@ function messageKeys(messages: unknown, prefix = ""): string[] {
     messageKeys(value, prefix ? `${prefix}.${key}` : key),
   ).sort();
 }
+
+// #182 offers OpenDyslexic and saves edits through the provider. Make this a
+// regular test when the provider preserves the selection on both paths.
+it.fails("persists and restores OpenDyslexic through the provider (pending #182)", async () => {
+  const { result, unmount } = renderHook(useStudyComfort, { wrapper: StudyComfortProvider });
+
+  act(() => result.current.updateSettings({ font: "opendyslexic" }));
+  const savedFont = JSON.parse(localStorage.getItem(storageKey) ?? "{}").font;
+  unmount();
+
+  // Seed the selection directly so the restore check is independent of the write path.
+  localStorage.setItem(storageKey, JSON.stringify({ font: "opendyslexic", sizePct: 130 }));
+  const restored = renderHook(useStudyComfort, { wrapper: StudyComfortProvider });
+  await waitFor(() => expect(restored.result.current.settings.sizePct).toBe(130));
+
+  expect({ savedFont, restoredFont: restored.result.current.settings.font }).toEqual({
+    savedFont: "opendyslexic",
+    restoredFont: "opendyslexic",
+  });
+});
 
 describe.skip("Study comfort settings KITCHEN-PENDING #182", () => {
   beforeEach(() => {
