@@ -35,7 +35,7 @@ interface AddRecordPayload {
   summary?: string;
 }
 
-test.describe.skip("S3 quick capture KITCHEN-PENDING #188", () => {
+test.describe("S3 quick capture", () => {
   test.use({ locale: "en-US", serviceWorkers: "block" });
 
   test("saves a note below the topic map and opens it in the chosen notebook", async ({ page }) => {

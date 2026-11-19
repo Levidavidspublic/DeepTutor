@@ -15,5 +15,13 @@
   "focus.on": "Увімкнути режим зосередження",
   "focus.off": "Вимкнути режим зосередження",
   "readAloud": "Читати вголос",
-  "rtlNote": "Читайте цей текст справа наліво."
+  "rtlNote": "Читайте цей текст справа наліво.",
+  "quickCapture.open": "Швидка нотатка",
+  "quickCapture.note": "Нотатка",
+  "quickCapture.notebook": "Записник",
+  "quickCapture.choose": "Виберіть записник",
+  "quickCapture.empty": "Спочатку створіть записник",
+  "quickCapture.loadError": "Не вдалося завантажити записники.",
+  "quickCapture.saveError": "Не вдалося зберегти нотатку. Спробуйте ще раз.",
+  "quickCapture.saved": "Збережено в записнику {{notebook}}"
 }

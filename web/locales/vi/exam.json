@@ -15,5 +15,13 @@
   "focus.on": "Bật chế độ tập trung",
   "focus.off": "Tắt chế độ tập trung",
   "readAloud": "Đọc thành tiếng",
-  "rtlNote": "Đọc văn bản này từ phải sang trái."
+  "rtlNote": "Đọc văn bản này từ phải sang trái.",
+  "quickCapture.open": "Ghi chú nhanh",
+  "quickCapture.note": "Ghi chú",
+  "quickCapture.notebook": "Sổ ghi chú",
+  "quickCapture.choose": "Chọn một sổ ghi chú",
+  "quickCapture.empty": "Hãy tạo sổ ghi chú trước",
+  "quickCapture.loadError": "Không thể tải danh sách sổ ghi chú.",
+  "quickCapture.saveError": "Không thể lưu ghi chú. Hãy thử lại.",
+  "quickCapture.saved": "Đã lưu vào {{notebook}}"
 }

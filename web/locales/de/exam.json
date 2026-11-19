@@ -15,5 +15,13 @@
   "focus.on": "Fokusmodus einschalten",
   "focus.off": "Fokusmodus ausschalten",
   "readAloud": "Vorlesen",
-  "rtlNote": "Lies diesen Text von rechts nach links."
+  "rtlNote": "Lies diesen Text von rechts nach links.",
+  "quickCapture.open": "Schnelle Notiz",
+  "quickCapture.note": "Notiz",
+  "quickCapture.notebook": "Notizbuch",
+  "quickCapture.choose": "Notizbuch auswählen",
+  "quickCapture.empty": "Zuerst ein Notizbuch erstellen",
+  "quickCapture.loadError": "Die Notizbücher konnten nicht geladen werden.",
+  "quickCapture.saveError": "Die Notiz konnte nicht gespeichert werden. Versuche es erneut.",
+  "quickCapture.saved": "Gespeichert in {{notebook}}"
 }

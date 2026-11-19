@@ -15,5 +15,13 @@
   "focus.on": "Activer le mode concentration",
   "focus.off": "Désactiver le mode concentration",
   "readAloud": "Lire à voix haute",
-  "rtlNote": "Lisez ce texte de droite à gauche."
+  "rtlNote": "Lisez ce texte de droite à gauche.",
+  "quickCapture.open": "Note rapide",
+  "quickCapture.note": "Note",
+  "quickCapture.notebook": "Carnet",
+  "quickCapture.choose": "Choisir un carnet",
+  "quickCapture.empty": "Créez d’abord un carnet",
+  "quickCapture.loadError": "Impossible de charger les carnets.",
+  "quickCapture.saveError": "Impossible d’enregistrer la note. Réessayez.",
+  "quickCapture.saved": "Enregistré dans {{notebook}}"
 }

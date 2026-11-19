@@ -15,5 +15,13 @@
   "focus.on": "Turn on focus mode",
   "focus.off": "Turn off focus mode",
   "readAloud": "Read aloud",
-  "rtlNote": "Read this text from right to left."
+  "rtlNote": "Read this text from right to left.",
+  "quickCapture.open": "Quick note",
+  "quickCapture.note": "Note",
+  "quickCapture.notebook": "Notebook",
+  "quickCapture.choose": "Choose a notebook",
+  "quickCapture.empty": "Create a notebook first",
+  "quickCapture.loadError": "Could not load notebooks.",
+  "quickCapture.saveError": "Could not save the note. Try again.",
+  "quickCapture.saved": "Saved to {{notebook}}"
 }

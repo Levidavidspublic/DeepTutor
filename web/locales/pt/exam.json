@@ -15,5 +15,13 @@
   "focus.on": "Turn on focus mode",
   "focus.off": "Turn off focus mode",
   "readAloud": "Read aloud",
-  "rtlNote": "Read this text from right to left."
+  "rtlNote": "Read this text from right to left.",
+  "quickCapture.open": "Nota rápida",
+  "quickCapture.note": "Nota",
+  "quickCapture.notebook": "Caderno",
+  "quickCapture.choose": "Escolha um caderno",
+  "quickCapture.empty": "Crie primeiro um caderno",
+  "quickCapture.loadError": "Não foi possível carregar os cadernos.",
+  "quickCapture.saveError": "Não foi possível salvar a nota. Tente novamente.",
+  "quickCapture.saved": "Nota salva em {{notebook}}"
 }

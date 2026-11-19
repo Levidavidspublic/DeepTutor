@@ -15,5 +15,13 @@
   "focus.on": "开启专注模式",
   "focus.off": "关闭专注模式",
   "readAloud": "朗读",
-  "rtlNote": "请从右向左阅读这段文字。"
+  "rtlNote": "请从右向左阅读这段文字。",
+  "quickCapture.open": "快速笔记",
+  "quickCapture.note": "笔记",
+  "quickCapture.notebook": "笔记本",
+  "quickCapture.choose": "选择笔记本",
+  "quickCapture.empty": "请先创建笔记本",
+  "quickCapture.loadError": "无法加载笔记本。",
+  "quickCapture.saveError": "无法保存笔记，请重试。",
+  "quickCapture.saved": "已保存到 {{notebook}}"
 }

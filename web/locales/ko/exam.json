@@ -15,5 +15,13 @@
   "focus.on": "Turn on focus mode",
   "focus.off": "Turn off focus mode",
   "readAloud": "Read aloud",
-  "rtlNote": "Read this text from right to left."
+  "rtlNote": "Read this text from right to left.",
+  "quickCapture.open": "빠른 메모",
+  "quickCapture.note": "메모",
+  "quickCapture.notebook": "노트북",
+  "quickCapture.choose": "노트북 선택",
+  "quickCapture.empty": "먼저 노트북을 만들어 주세요",
+  "quickCapture.loadError": "노트북을 불러오지 못했습니다.",
+  "quickCapture.saveError": "메모를 저장하지 못했습니다. 다시 시도해 주세요.",
+  "quickCapture.saved": "{{notebook}}에 저장했습니다"
 }

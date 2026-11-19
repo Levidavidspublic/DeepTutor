@@ -73,7 +73,7 @@ async function selectNotebook(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByRole("combobox", { name: /notebook/i }), target.id);
 }
 
-describe.skip("S3 quick capture KITCHEN-PENDING #188", () => {
+describe("S3 quick capture", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("en");
   });
@@ -83,7 +83,6 @@ describe.skip("S3 quick capture KITCHEN-PENDING #188", () => {
   });
 
   it("saves one subject-titled note to the selected notebook and clears the draft", async () => {
-    // @ts-expect-error KITCHEN-PENDING #188 not built yet
     const { QuickCapture }: typeof import("@/features/exam-prep/components/QuickCapture") = await import(/* @vite-ignore */ quickCapturePath);
     const pendingSave = Promise.withResolvers<Response>();
     const writes = mockNotebookApi({ save: () => pendingSave.promise });
@@ -135,7 +134,6 @@ describe.skip("S3 quick capture KITCHEN-PENDING #188", () => {
   });
 
   it("shows a loading state before offering the notebooks page for an empty list", async () => {
-    // @ts-expect-error KITCHEN-PENDING #188 not built yet
     const { QuickCapture }: typeof import("@/features/exam-prep/components/QuickCapture") = await import(/* @vite-ignore */ quickCapturePath);
     const pendingList = Promise.withResolvers<Response>();
     const writes = mockNotebookApi({ list: () => pendingList.promise });
@@ -163,7 +161,6 @@ describe.skip("S3 quick capture KITCHEN-PENDING #188", () => {
     ["the request fails", () => Response.json({ detail: "Notebook unavailable" }, { status: 503 })],
     ["the notebook rejects the record", () => savedRecord([])],
   ] as const)("keeps the draft and shows one error when %s", async (_failure, save) => {
-    // @ts-expect-error KITCHEN-PENDING #188 not built yet
     const { QuickCapture }: typeof import("@/features/exam-prep/components/QuickCapture") = await import(/* @vite-ignore */ quickCapturePath);
     const writes = mockNotebookApi({ save });
     const user = userEvent.setup();
@@ -185,7 +182,6 @@ describe.skip("S3 quick capture KITCHEN-PENDING #188", () => {
   });
 
   it("closes the card without writing a record when the learner cancels", async () => {
-    // @ts-expect-error KITCHEN-PENDING #188 not built yet
     const { QuickCapture }: typeof import("@/features/exam-prep/components/QuickCapture") = await import(/* @vite-ignore */ quickCapturePath);
     const writes = mockNotebookApi();
     const user = userEvent.setup();

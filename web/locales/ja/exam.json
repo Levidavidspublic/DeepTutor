@@ -15,5 +15,13 @@
   "focus.on": "Turn on focus mode",
   "focus.off": "Turn off focus mode",
   "readAloud": "Read aloud",
-  "rtlNote": "Read this text from right to left."
+  "rtlNote": "Read this text from right to left.",
+  "quickCapture.open": "クイックメモ",
+  "quickCapture.note": "メモ",
+  "quickCapture.notebook": "ノートブック",
+  "quickCapture.choose": "ノートブックを選択",
+  "quickCapture.empty": "先にノートブックを作成してください",
+  "quickCapture.loadError": "ノートブックを読み込めませんでした。",
+  "quickCapture.saveError": "メモを保存できませんでした。もう一度お試しください。",
+  "quickCapture.saved": "{{notebook}}に保存しました"
 }
