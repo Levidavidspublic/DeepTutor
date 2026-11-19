@@ -1,4 +1,4 @@
-"""API for runtime exam packs and topic progress."""
+"""API for runtime exam packs, their Guided Learning links, and topic progress."""
 
 from __future__ import annotations
 
