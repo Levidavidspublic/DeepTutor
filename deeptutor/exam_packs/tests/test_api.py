@@ -225,7 +225,11 @@ async def test_reload_rejects_duplicate_topic_ids_within_a_subject(
 
 
 async def test_teach_back_updates_only_the_submitted_pack_topic(
-    client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient,
+    pack_path: Path,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     other = pack_path.with_name("another-pack-folder")
     copytree(pack_path, other)
@@ -277,6 +281,12 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
     applied_math.mkdir()
     (applied_math / "functions.md").write_bytes(functions.read_bytes())
 
+    broken = pack_path.with_name("broken-pack")
+    copytree(pack_path, broken)
+    metadata["id"] = "broken-pack"
+    (broken / "pack.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (broken / "topics" / "applied-math" / "functions-copy.md").write_bytes(functions.read_bytes())
+
     async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
         response = await client.get("/api/exam-packs")
         assert response.status_code == 200
@@ -292,6 +302,7 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
         ("other-pack", "math"): {"done": 0, "total": 2},
     }
     assert await list_progress() == initial_progress
+    assert "Skipping broken exam pack broken-pack (ValueError)" in caplog.messages
     accepted = []
     for verdict, status, missing in (
         ("not yet", "learning", ["Define a function", "Identify its domain"]),
@@ -395,15 +406,33 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
         pytest.param("the", "Explain the rule.", 200, id="three-character-article"),
         pytest.param("a", 'Explain "a function" in your own words.', 200, id="longer-quote"),
         pytest.param("a", 'Is "domain" a "set"? Explain why.', 200, id="between-quotes"),
+        pytest.param("a", 'Is "domain " a " set"? Explain why.', 200, id="between-padded-quotes"),
+        pytest.param("a", "Is 'it's helpful' a 'claim'?", 200, id="quoted-contraction"),
         pytest.param("a", 'You wrote "a".', 502, id="double-quotes"),
+        pytest.param("a", 'You wrote " a ".', 502, id="spaced-double-quotes"),
         pytest.param("a", "You wrote 'a'.", 502, id="single-quotes"),
+        pytest.param("a", "That's what you wrote, ' a '.", 502, id="spaced-single-quotes"),
         pytest.param("a", "You wrote “a”.", 502, id="curly-double-quotes"),
+        pytest.param("a", "You wrote “ a ”.", 502, id="spaced-curly-double-quotes"),
         pytest.param("a", "You wrote ‘a’.", 502, id="curly-single-quotes"),
+        pytest.param("a", "You wrote ‘ a ’.", 502, id="spaced-curly-single-quotes"),
         pytest.param("a", "You wrote `a`.", 502, id="inline-code"),
+        pytest.param("a", "You wrote ` a `.", 502, id="spaced-inline-code"),
         pytest.param("a", "You wrote «a».", 502, id="guillemets"),
         pytest.param("a", "You wrote «\u202fa\u202f».", 502, id="spaced-guillemets"),
         pytest.param("a", "You wrote „a“.", 502, id="low-high-quotes"),
+        pytest.param("a", "You wrote „ a “.", 502, id="spaced-low-high-quotes"),
         pytest.param("כן", "You wrote ״כן״.", 502, id="hebrew-quotes"),
+        pytest.param("כן", "You wrote ״ כן ״.", 502, id="spaced-hebrew-quotes"),
+        pytest.param(
+            "כן", "בדוק את ״צה״ל״ ואז הסבר את ״כן״.", 502, id="quoted-hebrew-acronym-before-answer"
+        ),
+        pytest.param("כן", "אמרת ש״כן״ היא התשובה.", 502, id="prefixed-hebrew-quote"),
+        pytest.param("כן", "הסבר את ״כן״ו״לא״.", 502, id="first-joined-hebrew-quote"),
+        pytest.param("לא", "הסבר את ״כן״ו״לא״.", 502, id="second-joined-hebrew-quote"),
+        pytest.param(
+            "כן", "הסבר את ״צה״ל״ו״ כן ״.", 502, id="joined-hebrew-acronym-before-answer"
+        ),
         pytest.param("a", 'You wrote "a."', 502, id="punctuation-inside-quotes"),
         pytest.param("a", "a", 502, id="full-echo"),
         pytest.param("a", "a.", 502, id="punctuated-full-echo"),
