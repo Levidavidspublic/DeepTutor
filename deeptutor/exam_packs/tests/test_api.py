@@ -12,12 +12,13 @@ import pytest_asyncio
 
 from deeptutor.api import module_routes
 from deeptutor.api.router_loader import RouterLoader
-from deeptutor.api.routers import exam_packs
+from deeptutor.api.routers import auth, exam_packs
 from deeptutor.api.routers.auth import require_auth, require_learning_surface
 from deeptutor.exam_packs import teachback
 from deeptutor.learning.models import RepetitionState, ReviewTask
 from deeptutor.learning.storage import LearningStore
 from deeptutor.multi_user import learning_access
+from deeptutor.services.auth import TokenPayload
 from deeptutor.services.llm import LLMConfigError, LLMError
 from deeptutor.services.path_service import PathService
 
@@ -473,6 +474,13 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
+    # Keep the production exam-pack policy without loading the question engine's runtime settings.
+    exam_pack_routes = [
+        route
+        for route in questions["routes"]
+        if route["reference"] == "deeptutor.api.routers.exam_packs:router"
+    ]
+    questions = {**questions, "routes": exam_pack_routes}
     monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
     app = FastAPI()
     module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
@@ -491,14 +499,17 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
         response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
         assert response.status_code == 403
 
-        async def authenticated_learner() -> None:
-            pass
+        role = "user"
+
+        async def authenticated_user() -> TokenPayload:
+            return TokenPayload(username="test-user", role=role)
 
         async def complete(*args, **kwargs) -> str:
             return json.dumps({"verdict": "got it", "missing": [], "feedback": "Clear explanation."})
 
         del app.dependency_overrides[require_learning_surface]
-        app.dependency_overrides[require_auth] = authenticated_learner
+        app.dependency_overrides[require_auth] = authenticated_user
+        monkeypatch.setattr(auth, "AUTH_ENABLED", True)
         policy = {"allowed_surfaces": ["reading"]}
         monkeypatch.setattr(learning_access, "current_learning_policy", lambda: policy)
         monkeypatch.setattr(teachback, "complete", complete)
@@ -515,3 +526,24 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
         subject = await client.get(SUBJECT_URL)
         assert subject.status_code == 200
         assert subject.json()["topics"][0]["status"] == "done"
+
+        metadata_path = pack_path / "pack.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["title"] = "Updated Sample Pack"
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+        reload_url = "/api/exam-packs/reload"
+        response = await client.post(reload_url)
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Admin access required"
+
+        monkeypatch.setattr(learning_access, "current_learning_policy", lambda: None)
+        response = await client.post(reload_url)
+        assert response.status_code == 403
+        assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Sample Pack"
+
+        role = "admin"
+        response = await client.post(reload_url)
+        assert response.status_code == 200
+        assert response.json() == {"count": 1}
+        assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Updated Sample Pack"
