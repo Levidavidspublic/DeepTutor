@@ -30,7 +30,7 @@ data/user/exam_packs/<pack-id>/   (runtime folder; private packs mounted here)
   - `mock.py` - builds a timed mock from a questionnaire's topic weights, using `deep_question` for original questions and `deeptutor/learning/grading.py` for marking.
   - `plan.py` - turns exam dates + topics into calendar sessions through `deeptutor/services/calendar`.
   - `tests/` - pytest, added to `testpaths` in one line of `pyproject.toml`.
-- Register the new `deeptutor/api/routers/exam_packs.py` router with `loader.include(...)` inside `mount_module_routes` in `deeptutor/api/module_routes.py`. `deeptutor/api/main.py` calls `mount_module_routes` when assembling the FastAPI app.
+- The route entry for `deeptutor.api.routers.exam_packs:router` in `deeptutor/modules/manifests/questions.json` sets the `/api/exam-packs` prefix and the `learning` auth policy. When the `questions` module is enabled, `mount_module_routes` mounts the router with that policy during FastAPI app assembly.
 
 ## APIs (new, REST under the existing API prefix)
 
@@ -57,7 +57,7 @@ Exact prefix and auth dependency: copy whatever `routers/practice.py` uses (code
 ## Constraints
 
 - Public repo: no private content, no keys, no personal data. A pytest privacy guard (ticket EP-05) scans fork-owned files for private markers and key-shaped strings.
-- Upstream merge path: new code in new files. Upstream files allowed to change: `deeptutor/api/module_routes.py` (exam-pack router registration in `mount_module_routes`), `pyproject.toml` testpaths (1 line), the Learning tab list (1 entry), locale folders (new `exam.json` files only), settings section registry (1 entry). See `fork/UPSTREAM.md` for the upstream merge workflow.
+- Upstream merge path: new code in new files. Upstream files allowed to change: `deeptutor/modules/manifests/questions.json` (one exam-pack route entry gated by `questions` module enablement and using the `learning` auth policy), `pyproject.toml` testpaths (1 line), the Learning tab list (1 entry), locale folders (new `exam.json` files only), settings section registry (1 entry). See `fork/UPSTREAM.md` for the upstream merge workflow.
 - Tests: Python `pytest deeptutor/exam_packs/tests -q`; web `npm run typecheck`, `npx vitest run <file>`, `npm run i18n:check`, `npm run lint`. A full `npm run check` is too slow per ticket; run on the docs PR and weekly. (EXTRAPOLATED)
 - Runtime on the VPS: Python 3.13 venv at `/workspaces/.venv-deeptutor`, Node 24 (upstream asks Node 22 LTS; 24 is used for now - mismatch noted).
 - Models: tutor calls go through DeepTutor's existing provider settings. The self-hoster picks the provider. Nothing in the fork hard-codes a provider or key.
