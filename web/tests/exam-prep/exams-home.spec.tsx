@@ -5,6 +5,7 @@ import Page from "@/app/(workspace)/learning/exams/page";
 import { listExamPacks } from "@/features/exam-prep/api";
 import type { ExamPackSummary } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
+import deApp from "@/locales/de/app.json";
 import deExam from "@/locales/de/exam.json";
 
 vi.mock("@/features/exam-prep/api", () => ({ listExamPacks: vi.fn() }));
@@ -70,7 +71,7 @@ it("shows the empty state with a plain next step", async () => {
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
-it("gives each subject a named Continue link with both path segments encoded", async () => {
+it("encodes both segments of each subject link and keeps Continue pointed to the first subject", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([pack]);
 
   await act(async () => {
@@ -78,13 +79,19 @@ it("gives each subject a named Continue link with both path segments encoded", a
   });
 
   const card = screen.getByRole("article", { name: "Demo Exam Pack" });
-  expect(within(card).getAllByRole("link")).toHaveLength(2);
-  const mathLink = within(card).getByRole("link", { name: "Continue Math" });
-  const scienceLink = within(card).getByRole("link", { name: "Continue Science" });
+  const subjects = within(card).getByRole("list", { name: "Subjects" });
+  expect(within(subjects).getAllByRole("link")).toHaveLength(2);
+  expect(within(card).getAllByRole("link")).toHaveLength(3);
+  const mathLink = within(subjects).getByRole("link", { name: "Continue Math" });
+  const scienceLink = within(subjects).getByRole("link", { name: "Continue Science" });
   expect(mathLink).toHaveAttribute("href", "/learning/exams/demo%20pack/math%231");
   expect(scienceLink).toHaveAttribute("href", "/learning/exams/demo%20pack/science%2Flab");
   expect(within(mathLink).getByText("Math")).toHaveAttribute("lang", pack.ui_lang);
   expect(within(scienceLink).getByText("Science")).toHaveAttribute("lang", pack.ui_lang);
+  expect(within(card).getByRole("link", { name: "Continue" })).toHaveAttribute(
+    "href",
+    "/learning/exams/demo%20pack/math%231",
+  );
 });
 
 it("shows each subject's progress and any upcoming exam date", async () => {
@@ -154,6 +161,7 @@ it("omits missing dates and progress when the fields are absent or there are zer
 
 it("uses German copy and date formatting when the German resource is loaded", async () => {
   const germanI18n = i18n.cloneInstance({ lng: "de", forkResourceStore: true });
+  germanI18n.addResourceBundle("de", "app", deApp);
   germanI18n.addResourceBundle("de", "exam", deExam);
   const page = (
     <I18nextProvider i18n={germanI18n}>
@@ -186,6 +194,7 @@ it("uses German copy and date formatting when the German resource is loaded", as
   expect(within(card).getByText("Fächer")).toBeVisible();
   expect(within(subjects).getByRole("link", { name: "Weiter mit Math" })).toBeVisible();
   expect(within(subjects).getByRole("link", { name: "Weiter mit Science" })).toBeVisible();
+  expect(within(card).getByRole("link", { name: "Weiter" })).toBeVisible();
   const [math, science] = within(subjects).getAllByRole("listitem");
   expect(within(math).getByRole("progressbar", { name: "Fortschritt" })).toBeVisible();
   expect(within(science).queryByRole("progressbar")).not.toBeInTheDocument();
