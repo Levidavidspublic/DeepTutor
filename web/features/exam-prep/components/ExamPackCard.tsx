@@ -1,5 +1,6 @@
 import { useId } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { pageActionClass } from "@/components/layout/FeaturePage";
 import type { ExamPackSummary } from "../types";
 
@@ -12,6 +13,7 @@ export function ExamPackCard({
   subjectsLabel: string;
   continueLabel: string;
 }) {
+  const { t } = useTranslation("app");
   const titleId = useId();
   const packPath = `/learning/exams/${encodeURIComponent(pack.id)}`;
   const firstSubject = pack.subjects[0];
@@ -31,9 +33,11 @@ export function ExamPackCard({
                   <Link
                     href={`${packPath}/${encodeURIComponent(subject.id)}`}
                     aria-describedby={titleId}
-                    className={`${pageActionClass("secondary")} max-w-full`}
+                    className={`${pageActionClass()} max-w-full`}
                   >
-                    <bdi className="min-w-0" lang={pack.ui_lang}>{subject.title}</bdi>
+                    <span className="min-w-0">
+                      {continueLabel} <bdi lang={pack.ui_lang}>{subject.title}</bdi>
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -44,7 +48,7 @@ export function ExamPackCard({
             aria-describedby={titleId}
             className={`${pageActionClass()} mt-auto self-start`}
           >
-            {continueLabel}
+            {t("Continue")}
           </Link>
         </>
       )}
