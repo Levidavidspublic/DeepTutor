@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "fingerprint": "cffb9a87b802be2e27111e0eb03a2338c303cdf6daa6ecf809f48e37ad443109",
-=======
-  "fingerprint": "96cd7d2790940a64c664ff0f031c188790db5d6374ecf40e1edb5c1bfac881cc",
->>>>>>> origin/main
+  "fingerprint": "74838d8615ad204425845f4da8c371391b0d87e07100a9baed9effab9feda8a9",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3540,7 +3536,6 @@
         ]
       },
       {
-<<<<<<< HEAD
         "path": "/{pack}/subjects/{subject}/topics/{topic}/mastery-link",
         "name": "create_mastery_link",
         "kind": "http",
@@ -3557,8 +3552,6 @@
         ]
       },
       {
-=======
->>>>>>> origin/main
         "path": "/{pack}/glossary",
         "name": "get_exam_glossary",
         "kind": "http",
