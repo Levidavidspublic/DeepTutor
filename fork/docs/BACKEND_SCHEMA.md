@@ -13,9 +13,11 @@
 | Pack-topic -> mastery-path link | `data/user/exam_packs_state/links.json` | exam_packs | S3 | `exam_packs.links` |
 | Mock attempts | `data/user/exam_packs_state/attempts/<attemptId>.json` | exam_packs | S7, S3 | `exam_packs.mock` |
 | Decks | `data/user/exam_packs_state/decks/<deckId>.json` | exam_packs | S6 | deck import, topic-to-deck |
-| Teach-back results | `data/user/exam_packs_state/teachback/<topicId>.jsonl` | exam_packs | S3, S5 | teach-back endpoint |
+| Teach-back results | `data/user/exam_packs_state/teachback/<packId>/<topicId>.jsonl` | exam_packs | S3, S5 | teach-back endpoint |
 | Plan sessions | existing calendar service (`deeptutor/services/calendar`) | calendar | S8, S11 | `exam_packs.plan` via calendar API |
 | Study comfort settings | existing settings JSON (`data/user/settings/*.json`), new key `study_comfort` | settings | whole web app | S10 |
+
+Teach-back reads and writes use the pack ID from `pack.json` and the topic ID from its front matter. Pack IDs must be unique among loaded packs. Topic IDs must be unique across subjects within a pack and may repeat across packs.
 
 Exact upstream storage helpers (path service, JSON store) are reused: `deeptutor/services/path_service.py`, `deeptutor/services/storage` - names confirmed by code-map step in each ticket.
 
@@ -50,7 +52,7 @@ Exact upstream storage helpers (path service, JSON store) are reused: `deeptutor
 | `mark_attempt(paper, answers) -> Attempt` | mock (uses `learning/grading.py`) | submit endpoint |
 | `plan_sessions(pack, subject, start, exam_date) -> list[Session]` | plan | `POST /exam-packs/{pack}/plan` |
 | `import_deck(text, kind) -> Deck` | decks | S6 import |
-| `teach_back(topic, learner_text) -> TeachBack` | teachback | S5 |
+| `teach_back(pack_id, topic, learner_text) -> TeachBack` | teachback | S5 |
 
 ## Security and privacy
 - The packs folder path comes from settings or env `DEEPTUTOR_EXAM_PACKS_DIR`; it is never served as static files.
