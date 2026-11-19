@@ -1,10 +1,14 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   StudyComfortProvider,
   useStudyComfort,
 } from "@/features/a11y-study/StudyComfortProvider";
 import { clampStudyComfort } from "@/features/a11y-study/studyComfort";
+
+vi.mock("next/font/google", () => ({
+  Lexend: () => ({ style: { fontFamily: "__Lexend_test, system-ui, sans-serif" } }),
+}));
 
 it("applies the default study comfort settings to the wrapper", () => {
   render(
@@ -73,7 +77,7 @@ it("updates the wrapper and restores the saved settings on remount", async () =>
   fireEvent.click(button);
   expect(button).toHaveAccessibleName("Text size 150%");
   expect(button.parentElement).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
+    "--study-font": "__Lexend_test, system-ui, sans-serif",
     "--study-size": "150%",
     "--study-line-height": "1.8",
     "--study-letter-spacing": "0.05em",
@@ -88,10 +92,36 @@ it("updates the wrapper and restores the saved settings on remount", async () =>
   );
   const restored = await screen.findByRole("button", { name: "Text size 150%" });
   expect(restored.parentElement).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
+    "--study-font": "__Lexend_test, system-ui, sans-serif",
     "--study-size": "150%",
     "--study-line-height": "1.8",
     "--study-letter-spacing": "0.05em",
   });
   expect(restored.parentElement).toHaveAttribute("data-contrast", "high");
+});
+
+it("restores the other preferences when a saved font is no longer supported", async () => {
+  const storageKey = "deeptutor-study-comfort";
+  localStorage.setItem(storageKey, JSON.stringify({ font: "opendyslexic", sizePct: 125 }));
+
+  function SavedComfort() {
+    const { settings } = useStudyComfort();
+    return <p>{settings.font} at {settings.sizePct}%</p>;
+  }
+
+  render(
+    <StudyComfortProvider>
+      <SavedComfort />
+    </StudyComfortProvider>,
+  );
+
+  const restored = await screen.findByText("system at 125%");
+  expect(restored.parentElement).toHaveStyle({
+    "--study-font": "system-ui, sans-serif",
+    "--study-size": "125%",
+  });
+  expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toMatchObject({
+    font: "system",
+    sizePct: 125,
+  });
 });
