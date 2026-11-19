@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -17,7 +18,6 @@ from deeptutor.services.llm import LLMConfigError
 from deeptutor.services.workspace import get_content_workspace_service
 from deeptutor.services.workspace.activity import WorkspaceActivityMiddleware
 
-from .test_api import keep_loop_responsive as keep_loop_responsive
 from .test_loader import pack_path as pack_path
 from .test_mock_builder import _valid_payload
 from .test_mock_builder import pipeline_run as pipeline_run
@@ -30,6 +30,22 @@ START_BODY = {"subject_id": "math", "questionnaire_code": "001"}
 STATE_PATH = Path("exam_packs_state/attempts")
 
 
+@pytest_asyncio.fixture
+async def keep_loop_responsive():
+    # Let restricted sandboxes process worker-thread completions.
+    loop = asyncio.get_running_loop()
+
+    def tick() -> None:
+        nonlocal timer
+        timer = loop.call_later(0.01, tick)
+
+    timer = loop.call_later(0.01, tick)
+    try:
+        yield
+    finally:
+        timer.cancel()
+
+
 @pytest.fixture
 def attempts_dir(tmp_path, monkeypatch):
     runtime = tmp_path / "runtime"
@@ -39,7 +55,7 @@ def attempts_dir(tmp_path, monkeypatch):
 
 
 @pytest_asyncio.fixture
-async def client(pack_path, attempts_dir, pipeline_run, monkeypatch):
+async def client(pack_path, attempts_dir, pipeline_run, keep_loop_responsive, monkeypatch):
     metadata_path = pack_path / "pack.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     original = metadata["subjects"][0]["questionnaires"][0]
