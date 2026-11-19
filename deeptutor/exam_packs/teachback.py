@@ -113,6 +113,8 @@ def append_result(pack_id: str, topic: Topic, result: TeachBackResult) -> None:
     with exclusive_lock(path.with_suffix(".lock")):
         entry = {
             "at": datetime.now(timezone.utc).isoformat(),
+            "pack_id": pack_id,
+            "subject_id": topic.subject_id,
             "topic_id": topic.id,
             **result.model_dump(),
         }
