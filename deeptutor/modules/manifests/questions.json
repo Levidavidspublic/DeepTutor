@@ -4,6 +4,7 @@
   "distribution": "deeptutor-questions",
   "requires": [
     "parsing",
+    "server",
     "mastery"
   ],
   "optional": [
