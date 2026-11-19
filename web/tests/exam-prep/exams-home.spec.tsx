@@ -7,6 +7,7 @@ import type { ExamPackSummary } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
 import deApp from "@/locales/de/app.json";
 import deExam from "@/locales/de/exam.json";
+import viExam from "@/locales/vi/exam.json";
 
 vi.mock("@/features/exam-prep/api", () => ({ listExamPacks: vi.fn() }));
 
@@ -118,6 +119,28 @@ it("uses German copy for the heading, empty state, and subject navigation when t
   expect(within(subjects).getByRole("link", { name: "Weiter mit Math" })).toBeVisible();
   expect(within(subjects).getByRole("link", { name: "Weiter mit Science" })).toBeVisible();
   expect(within(card).getByRole("link", { name: "Weiter" })).toBeVisible();
+});
+
+it("uses Vietnamese copy for the heading, empty state, and subject navigation when the resource is loaded", async () => {
+  const vietnameseI18n = i18n.cloneInstance({ lng: "vi", forkResourceStore: true });
+  vietnameseI18n.addResourceBundle("vi", "exam", viExam);
+  const page = (
+    <I18nextProvider i18n={vietnameseI18n}>
+      <Page />
+    </I18nextProvider>
+  );
+  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([pack]);
+
+  const { unmount } = render(page);
+  expect(await screen.findByRole("heading", { name: "Chưa có gói ôn thi nào" })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: "Ôn thi" })).toBeVisible();
+  expect(screen.getByText("Thêm một gói ôn thi để bắt đầu.")).toBeVisible();
+  unmount();
+
+  render(page);
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  const subjects = within(card).getByRole("list", { name: "Môn học" });
+  expect(within(subjects).getByRole("link", { name: "Tiếp tục Math" })).toBeVisible();
 });
 
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {

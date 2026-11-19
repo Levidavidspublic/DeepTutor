@@ -1,7 +1,9 @@
 import asyncio
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from shutil import copytree
+from threading import get_ident
 
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
@@ -62,7 +64,30 @@ async def client(pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPat
         yield client
 
 
-async def test_exam_pack_routes(pack_path: Path, client: AsyncClient) -> None:
+async def test_exam_pack_routes(
+    pack_path: Path, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz == timezone.utc
+            return cls(2027, 2, 3, tzinfo=tz)
+
+    monkeypatch.setattr(exam_packs, "datetime", FrozenDateTime)
+    metadata_path = pack_path / "pack.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["subjects"][0]["exam_dates"] = ["2027-02-08", "2027-02-02", "2027-02-03"]
+    metadata["subjects"].append(
+        {
+            "id": "empty",
+            "title": "Empty Subject",
+            "title_source": "Empty Subject",
+            "questionnaires": [],
+            "exam_dates": ["2027-02-02"],
+        }
+    )
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
     response = await client.get("/api/exam-packs")
     assert response.status_code == 200
     assert response.json() == [
@@ -72,7 +97,22 @@ async def test_exam_pack_routes(pack_path: Path, client: AsyncClient) -> None:
             "exam": "Sample Exam",
             "source_lang": "he",
             "ui_lang": "en",
-            "subjects": [{"id": "math", "title": "Math", "title_source": "מתמטיקה"}],
+            "subjects": [
+                {
+                    "id": "math",
+                    "title": "Math",
+                    "title_source": "מתמטיקה",
+                    "progress": {"done": 0, "total": 2},
+                    "exam_date": "2027-02-03",
+                },
+                {
+                    "id": "empty",
+                    "title": "Empty Subject",
+                    "title_source": "Empty Subject",
+                    "progress": {"done": 0, "total": 0},
+                    "exam_date": None,
+                },
+            ],
         }
     ]
 
@@ -131,8 +171,6 @@ async def test_exam_pack_routes(pack_path: Path, client: AsyncClient) -> None:
     assert (await client.get("/api/exam-packs/missing/glossary")).status_code == 404
     assert (await client.get("/api/exam-packs/sample-pack/subjects/missing")).status_code == 404
 
-    metadata_path = pack_path / "pack.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     metadata["title"] = "Updated Sample Pack"
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
     assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Sample Pack"
@@ -180,6 +218,38 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
         return json.dumps(next(grades))
 
     monkeypatch.setattr(teachback, "complete", complete)
+
+    metadata_path = pack_path / "pack.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["subjects"].append(
+        {
+            "id": "applied-math",
+            "title": "Applied Math",
+            "title_source": "Applied Math",
+            "questionnaires": metadata["subjects"][0]["questionnaires"],
+        }
+    )
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    applied_math = pack_path / "topics" / "applied-math"
+    applied_math.mkdir()
+    (applied_math / "functions.md").write_bytes(functions.read_bytes())
+    (applied_math / "functions-copy.md").write_bytes(functions.read_bytes())
+
+    async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
+        response = await client.get("/api/exam-packs")
+        assert response.status_code == 200
+        return {
+            (pack["id"], subject["id"]): subject["progress"]
+            for pack in response.json()
+            for subject in pack["subjects"]
+        }
+
+    initial_progress = {
+        ("sample-pack", "math"): {"done": 0, "total": 2},
+        ("sample-pack", "applied-math"): {"done": 0, "total": 1},
+        ("other-pack", "math"): {"done": 0, "total": 2},
+    }
+    assert await list_progress() == initial_progress
     accepted = []
     for verdict, status, missing in (
         ("not yet", "learning", ["Define a function", "Identify its domain"]),
@@ -200,6 +270,10 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
         subject = await client.get(SUBJECT_URL)
         assert [topic["status"] for topic in subject.json()["topics"]] == [status, "new"]
         assert (await client.get(other_subject)).json()["topics"][0]["status"] == "new"
+        assert await list_progress() == {
+            **initial_progress,
+            ("sample-pack", "math"): {"done": int(status == "done"), "total": 2},
+        }
 
     (history,) = state_dir.glob("*.jsonl")
     contents = history.read_text(encoding="utf-8")
@@ -232,6 +306,14 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
 async def test_teach_back_title_fallback_and_concurrent_appends(
     client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    event_loop_thread = get_ident()
+    load_packs = exam_packs.load_packs
+
+    def load_packs_off_loop():
+        assert get_ident() != event_loop_thread
+        return load_packs()
+
+    monkeypatch.setattr(exam_packs, "load_packs", load_packs_off_loop)
     graphs = pack_path / "topics" / "math" / "graphs.md"
     graphs.write_text(
         graphs.read_text(encoding="utf-8").replace("objectives: [Read a graph]", "objectives: []"),
@@ -355,6 +437,8 @@ async def test_subject_status_falls_back_to_linked_mastery(
     progress.qualitative_mastery[objective.id] = True
     store.save(progress)
     assert await topic_status() == "done"
+    packs = (await client.get("/api/exam-packs")).json()
+    assert packs[0]["subjects"][0]["progress"] == {"done": 1, "total": 2}
 
     progress.review_queue = [
         ReviewTask(
@@ -368,6 +452,8 @@ async def test_subject_status_falls_back_to_linked_mastery(
     ]
     store.save(progress)
     assert await topic_status() == "review"
+    packs = (await client.get("/api/exam-packs")).json()
+    assert packs[0]["subjects"][0]["progress"] == {"done": 0, "total": 2}
     before = store.load(path_id)
 
     async def complete(*args, **kwargs) -> str:
