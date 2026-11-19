@@ -15,6 +15,8 @@ import { clampStudyComfort, DEFAULT_STUDY_COMFORT, type StudyComfortSettings } f
 const STORAGE_KEY = "deeptutor-study-comfort";
 const FONT_FAMILIES: Record<StudyComfortSettings["font"], string> = {
   system: "system-ui, sans-serif",
+  // Lexend and OpenDyslexic rely on locally installed fonts.
+  // If the selected font is unavailable, the browser uses system-ui, then sans-serif.
   lexend: "Lexend, system-ui, sans-serif",
   opendyslexic: "OpenDyslexic, system-ui, sans-serif",
 };
