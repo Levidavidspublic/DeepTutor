@@ -1,4 +1,4 @@
-"""API for runtime exam packs and topic progress."""
+"""API for runtime exam packs and their Guided Learning links."""
 
 from __future__ import annotations
 
@@ -207,8 +207,11 @@ def get_exam_subject(pack: str, subject: str) -> SubjectDetail:
 @router.post("/{pack}/subjects/{subject}/topics/{topic}/mastery-link")
 def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
     exam_pack = _get_pack(pack)
-    exam_topic = _get_topic(exam_pack, subject, topic)
-    return {"path_id": get_or_create_mastery_link(exam_pack, exam_topic)}
+    _get_subject(exam_pack, subject)
+    for exam_topic in exam_pack.topics:
+        if exam_topic.id == topic and exam_topic.subject_id == subject:
+            return {"path_id": get_or_create_mastery_link(exam_pack, exam_topic)}
+    raise HTTPException(status_code=404, detail="Exam topic not found")
 
 
 @router.post(
