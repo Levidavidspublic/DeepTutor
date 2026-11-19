@@ -131,6 +131,21 @@ it("shows the linked subject's topics in the selected pack on the Exams page", a
   expect(getExamSubject).toHaveBeenCalledExactlyOnceWith(pack.id, science.id);
   const otherPack = screen.getByRole("article", { name: "Another Exam Pack" });
   expect(within(otherPack).queryByRole("region", { name: science.title })).not.toBeInTheDocument();
+
+  const math = pack.subjects[0];
+  vi.mocked(getExamSubject).mockResolvedValueOnce({
+    id: math.id,
+    title: math.title,
+    questionnaires: [],
+    topics: [{ id: "algebra", title: "Algebra", title_source: "Algebra", objectives: [], weight: 1 }],
+  });
+  const continueLink = within(card).getByRole<HTMLAnchorElement>("link", { name: "Continue" });
+  rerender(pageAt(new URL(continueLink.href).searchParams));
+
+  const mathTopics = await within(card).findByRole("region", { name: math.title });
+  expect(await within(mathTopics).findByText("Algebra")).toBeVisible();
+  expect(within(card).queryByRole("region", { name: science.title })).not.toBeInTheDocument();
+  expect(getExamSubject).toHaveBeenNthCalledWith(2, pack.id, math.id);
 });
 
 it("shows each subject's progress and any upcoming exam date", async () => {
