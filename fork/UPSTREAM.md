@@ -6,7 +6,9 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 1. `git fetch upstream --tags`
 2. `git switch -c sync/upstream-<tag> main && git merge <tag>`
 3. Resolve conflicts. Only the files below should conflict.
-4. Run `pytest deeptutor/exam_packs/tests -q` and in `web/`: `npm run typecheck && npm run i18n:check`.
+4. Run `npm run typecheck && npm run i18n:check` from `web/` for every sync.
+   If `deeptutor/exam_packs/tests` exists in the checkout, also run
+   `pytest deeptutor/exam_packs/tests -q` from the repository root.
 5. Open a PR to `main`. Amit merges.
 
 ## Upstream files the fork is allowed to touch
