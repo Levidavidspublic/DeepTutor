@@ -48,7 +48,6 @@ describe.skip("S3 Materials link KITCHEN-PENDING #68", () => {
   });
 
   it("adds one keyboard-reachable secondary Materials link in the loaded subject header", async () => {
-    // @ts-expect-error KITCHEN-PENDING #68 not built yet
     const { SubjectTopicMap }: typeof import("@/features/exam-prep/components/SubjectTopicMap") = await import(/* @vite-ignore */ subjectTopicMapPath);
     window.history.replaceState(
       {},
@@ -86,7 +85,6 @@ describe.skip("S3 Materials link KITCHEN-PENDING #68", () => {
   });
 
   it("offers the pack's Materials link for a loaded subject with no topics in General", async () => {
-    // @ts-expect-error KITCHEN-PENDING #68 not built yet
     const { SubjectTopicMap }: typeof import("@/features/exam-prep/components/SubjectTopicMap") = await import(/* @vite-ignore */ subjectTopicMapPath);
     const anotherPackId = "geometry-pack";
     const emptySubject = { ...subject, id: "geometry", title: "Geometry", topics: [] };
