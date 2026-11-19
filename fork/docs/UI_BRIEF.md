@@ -35,7 +35,7 @@ DeepTutor's web uses Tailwind (`web/tailwind.config.js`) and shared components i
 - Font: system default / Lexend / OpenDyslexic (self-hosted).
 - Text size: 100-150%. Line height: 1.5-2.0. Letter spacing: normal / wide.
 - Max line length ~70 characters on reading screens.
-- Left-aligned text, never justified.
+- Use `text-align: start` so English text aligns left and Hebrew text aligns right. Never justify text.
 - Contrast: normal / high. Theme follows DeepTutor (light/dark).
 - Read-aloud speed: 0.5-2x (matches the desk's voice range).
 
