@@ -1,5 +1,6 @@
 import { useId } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { pageActionClass } from "@/components/layout/FeaturePage";
 import { ProgressRing } from "@/components/space/learning/ProgressRing";
 import type { ExamPackSummary } from "../types";
@@ -19,8 +20,10 @@ export function ExamPackCard({
   progressLabel: string;
   examDateLabel: string;
 }) {
+  const { t } = useTranslation("app");
   const titleId = useId();
   const packPath = `/learning/exams/${encodeURIComponent(pack.id)}`;
+  const firstSubject = pack.subjects[0];
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeZone: "UTC",
@@ -31,7 +34,7 @@ export function ExamPackCard({
       <h2 id={titleId} className="break-words text-base font-semibold">
         <bdi lang={pack.ui_lang}>{pack.title}</bdi>
       </h2>
-      {pack.subjects.length > 0 && (
+      {firstSubject && (
         <div className="space-y-1 text-sm">
           <p className="font-medium">{subjectsLabel}</p>
           <ul className="list-disc space-y-2 ps-5 text-muted-foreground" aria-label={subjectsLabel}>
@@ -81,6 +84,15 @@ export function ExamPackCard({
             })}
           </ul>
         </div>
+      )}
+      {firstSubject && (
+        <Link
+          href={`${packPath}/${encodeURIComponent(firstSubject.id)}`}
+          aria-describedby={titleId}
+          className={`${pageActionClass()} mt-auto self-start`}
+        >
+          {t("Continue")}
+        </Link>
       )}
     </article>
   );
