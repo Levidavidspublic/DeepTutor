@@ -184,7 +184,7 @@ async def test_exam_pack_routes(
 async def test_teach_back_updates_only_the_submitted_pack_topic(
     client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    other = pack_path.with_name("other-pack")
+    other = pack_path.with_name("another-pack-folder")
     copytree(pack_path, other)
     metadata_path = other / "pack.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -281,7 +281,26 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
     entries = [json.loads(line) for line in contents.splitlines()]
     for entry, result in zip(entries, accepted, strict=True):
         assert entry.pop("at")
-        assert entry == {"topic_id": "functions", **result}
+        assert entry == {
+            "pack_id": "sample-pack",
+            "subject_id": "math",
+            "topic_id": "functions",
+            **result,
+        }
+
+    async def other_grade(*args, **kwargs) -> str:
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": "Explain the rule."})
+
+    monkeypatch.setattr(teachback, "complete", other_grade)
+    response = await client.post(
+        f"{other_subject}/topics/functions/teach-back", json={"learner_text": ANSWER}
+    )
+    assert response.status_code == 200
+    assert (await client.get(other_subject)).json()["topics"][0]["status"] == "learning"
+    assert (await client.get(SUBJECT_URL)).json()["topics"][0]["status"] == "done"
+    (other_history,) = set(state_dir.glob("*.jsonl")) - {history}
+    assert json.loads(other_history.read_text(encoding="utf-8"))["pack_id"] == "other-pack"
+    assert history.read_text(encoding="utf-8") == contents
 
 
 async def test_teach_back_title_fallback_and_concurrent_appends(
@@ -454,12 +473,7 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
-    exam_route = next(
-        route for route in questions["routes"] if route["reference"].endswith(".exam_packs:router")
-    )
-    monkeypatch.setattr(
-        module_routes, "manifests", lambda: {"questions": {**questions, "routes": [exam_route]}}
-    )
+    monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
     app = FastAPI()
     module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
 
