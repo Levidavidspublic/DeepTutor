@@ -98,13 +98,16 @@ it("keeps the subject visible and retries Study for the same topic after a failu
   const user = userEvent.setup();
   render(<SubjectPage />);
 
-  const [study] = await screen.findAllByRole("button", { name: "Study" });
+  const objective = await screen.findByText("Calculate slope.");
+  const topic = within(objective.closest("ul")!.closest("li")!);
+  const study = topic.getByRole("button", { name: "Study" });
   await user.click(study);
-  const alert = within(await screen.findByRole("alert"));
+  const alert = await topic.findByRole("alert");
+  expect(screen.getByRole("alert")).toBe(alert);
   expect(screen.getByRole("heading", { level: 1, name: "Algebra" })).toBeVisible();
   expect(redirect).not.toHaveBeenCalled();
   expect(study).toBeEnabled();
-  await user.click(alert.getByRole("button", { name: "Retry" }));
+  await user.click(within(alert).getByRole("button", { name: "Retry" }));
 
   const expectedRequest = `${topicRequest}/slope%20%2B%20lines/mastery-link?${workspaceQuery}`;
   expect(fetchMock).toHaveBeenCalledTimes(3);
