@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "title": "Exam prep",
   "empty.title": "No exam packs yet",
   "empty.body": "Add an exam pack to get started.",
@@ -16,4 +17,23 @@
   "focus.off": "Turn off focus mode",
   "readAloud": "Read aloud",
   "rtlNote": "Read this text from right to left."
+=======
+  "title": "Prüfungsvorbereitung",
+  "empty.title": "Noch keine Prüfungspakete",
+  "empty.body": "Füge ein Prüfungspaket hinzu, um loszulegen.",
+  "subjects": "Fächer",
+  "progress": "Fortschritt",
+  "nextSession": "Nächste Lerneinheit",
+  "examDate": "Prüfungstermin",
+  "continue": "Weiter mit",
+  "study": "Lernen",
+  "teachBack": "In eigenen Worten erklären",
+  "drill": "Üben",
+  "mock": "Probeprüfung",
+  "glossary": "Glossar",
+  "focus.on": "Fokusmodus einschalten",
+  "focus.off": "Fokusmodus ausschalten",
+  "readAloud": "Vorlesen",
+  "rtlNote": "Lies diesen Text von rechts nach links."
+>>>>>>> origin/main
 }
