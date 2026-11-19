@@ -19,7 +19,8 @@ _TITLE_LIMIT = 200  # EventInput.title
 _PARAMETER_VALUE = r'(?:"[^"]*"|[^";:])*'
 _PARAMETER = re.compile(rf";([A-Z0-9-]+)=({_PARAMETER_VALUE})", re.IGNORECASE)
 _PROPERTY = re.compile(
-    rf"(UID|SUMMARY|DTSTART|DTEND|DURATION|RRULE)((?:;[A-Z0-9-]+={_PARAMETER_VALUE})*):",
+    r"(UID|SUMMARY|DTSTART|DTEND|DURATION|RRULE|RDATE|EXDATE)"
+    rf"((?:;[A-Z0-9-]+={_PARAMETER_VALUE})*):",
     re.IGNORECASE,
 )
 _DURATION = re.compile(
@@ -143,7 +144,7 @@ def parse_feed(text: str, *, tzid: str, remind: bool = False) -> list[FeedEvent]
 
     events: list[FeedEvent] = []
     for properties in _event_properties(text):
-        if "DTSTART" not in properties or "RRULE" in properties:
+        if "DTSTART" not in properties or {"RRULE", "RDATE", "EXDATE"} & properties.keys():
             continue
         try:
             event = _build_event(properties, tzid, remind)
