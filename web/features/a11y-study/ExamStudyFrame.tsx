@@ -6,13 +6,13 @@ import { useStudyComfort } from "./StudyComfortProvider";
 
 export function ExamStudyFrame({ children }: { children: ReactNode }) {
   const { settings } = useStudyComfort();
-  const readingStyle = {
-    "--study-reading-size": `${settings.sizePct / 100}rem`,
+  const readingStyle: CSSProperties & { "--exam-reading-size": string } = {
+    "--exam-reading-size": `${settings.sizePct / 100}rem`,
     fontFamily: "var(--study-font)",
-    fontSize: "var(--study-reading-size)",
+    fontSize: "var(--exam-reading-size)",
     lineHeight: "var(--study-line-height)",
     letterSpacing: "var(--study-letter-spacing)",
-  } as CSSProperties;
+  };
 
   return (
     <div
@@ -33,12 +33,12 @@ export function ExamStudyFrame({ children }: { children: ReactNode }) {
               [&_:is(.dt-page-title,.font-serif)]:[font-family:inherit]
               [&_:is(h1,h2,h3,p,a,button,li,label,textarea)]:[line-height:var(--study-line-height)]
               [&_:is(h1,h2,h3,p,a,button,li,label,textarea)]:[letter-spacing:var(--study-letter-spacing)]
-              [&_.dt-page-title]:[font-size:calc(var(--study-reading-size)*1.75)]
-              [&_.dt-page-action]:[font-size:calc(var(--study-reading-size)*0.78125)]
-              [&_.text-xs]:[font-size:calc(var(--study-reading-size)*0.75)]
-              [&_.text-sm]:[font-size:calc(var(--study-reading-size)*0.875)]
-              [&_.text-base]:[font-size:var(--study-reading-size)]
-              [&_.text-lg]:[font-size:calc(var(--study-reading-size)*1.125)]"
+              [&_.dt-page-title]:[font-size:calc(var(--exam-reading-size)*1.75)]
+              [&_.dt-page-action]:[font-size:calc(var(--exam-reading-size)*0.78125)]
+              [&_.text-xs]:[font-size:calc(var(--exam-reading-size)*0.75)]
+              [&_.text-sm]:[font-size:calc(var(--exam-reading-size)*0.875)]
+              [&_.text-base]:[font-size:var(--exam-reading-size)]
+              [&_.text-lg]:[font-size:calc(var(--exam-reading-size)*1.125)]"
           >
             {children}
           </div>

@@ -17,6 +17,7 @@ from deeptutor.api.routers.auth import require_auth, require_learning_surface
 from deeptutor.exam_packs import teachback
 from deeptutor.learning.models import RepetitionState, ReviewTask
 from deeptutor.learning.storage import LearningStore
+from deeptutor.modules import catalog
 from deeptutor.multi_user import learning_access
 from deeptutor.services.llm import LLMConfigError, LLMError
 from deeptutor.services.path_service import PathService
@@ -181,6 +182,47 @@ async def test_exam_pack_routes(
     assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Updated Sample Pack"
 
 
+async def test_exam_pack_list_skips_duplicate_ids(
+    pack_path: Path, client: AsyncClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    duplicate = pack_path.with_name("sample-pack-duplicate")
+    other = pack_path.with_name("sample-pack-other")
+    copytree(pack_path, duplicate)
+    copytree(pack_path, other)
+    metadata = json.loads((pack_path / "pack.json").read_text(encoding="utf-8"))
+    (duplicate / "pack.json").write_text(
+        json.dumps({**metadata, "title": "Duplicate Pack"}), encoding="utf-8"
+    )
+    (other / "pack.json").write_text(
+        json.dumps({**metadata, "id": "other-pack", "title": "Other Pack"}), encoding="utf-8"
+    )
+
+    response = await client.get("/api/exam-packs")
+    assert response.status_code == 200
+    assert [(pack["id"], pack["title"]) for pack in response.json()] == [
+        ("sample-pack", "Sample Pack"),
+        ("other-pack", "Other Pack"),
+    ]
+    assert "Skipping broken exam pack sample-pack-duplicate" in caplog.text
+
+
+async def test_reload_rejects_duplicate_topic_ids_within_a_subject(
+    client: AsyncClient, pack_path: Path
+) -> None:
+    assert (await client.get(SUBJECT_URL)).status_code == 200
+
+    functions = pack_path / "topics" / "math" / "functions.md"
+    functions.with_name("functions-copy.md").write_text(
+        functions.read_text(encoding="utf-8").replace("title: Functions", "title: Another lesson"),
+        encoding="utf-8",
+    )
+
+    response = await client.post("/api/exam-packs/reload")
+    assert response.status_code == 200
+    assert response.json() == {"count": 0}
+    assert (await client.get(SUBJECT_URL)).status_code == 404
+
+
 async def test_teach_back_updates_only_the_submitted_pack_topic(
     client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -233,7 +275,6 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
     applied_math = pack_path / "topics" / "applied-math"
     applied_math.mkdir()
     (applied_math / "functions.md").write_bytes(functions.read_bytes())
-    (applied_math / "functions-copy.md").write_bytes(functions.read_bytes())
 
     async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
         response = await client.get("/api/exam-packs")
@@ -344,6 +385,55 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
     (history,) = state_dir.glob("*.jsonl")
     entries = [json.loads(line) for line in history.read_text(encoding="utf-8").splitlines()]
     assert [entry["missing"] for entry in entries] == [["Graphs"]] * len(answers)
+
+
+@pytest.mark.parametrize(
+    ("learner_text", "feedback", "expected_status"),
+    [
+        pytest.param("a", "Add a definition and a worked example.", 200, id="ordinary-article"),
+        pytest.param("the", "Explain the rule.", 200, id="three-character-article"),
+        pytest.param("a", 'Explain "a function" in your own words.', 200, id="longer-quote"),
+        pytest.param("a", 'Is "domain" a "set"? Explain why.', 200, id="between-quotes"),
+        pytest.param("a", 'You wrote "a".', 502, id="double-quotes"),
+        pytest.param("a", "You wrote 'a'.", 502, id="single-quotes"),
+        pytest.param("a", "You wrote “a”.", 502, id="curly-double-quotes"),
+        pytest.param("a", "You wrote ‘a’.", 502, id="curly-single-quotes"),
+        pytest.param("a", "You wrote `a`.", 502, id="inline-code"),
+        pytest.param("a", "You wrote «a».", 502, id="guillemets"),
+        pytest.param("a", "You wrote «\u202fa\u202f».", 502, id="spaced-guillemets"),
+        pytest.param("a", "You wrote „a“.", 502, id="low-high-quotes"),
+        pytest.param("כן", "You wrote ״כן״.", 502, id="hebrew-quotes"),
+        pytest.param("a", 'You wrote "a."', 502, id="punctuation-inside-quotes"),
+        pytest.param("a", "a", 502, id="full-echo"),
+        pytest.param("a", "a.", 502, id="punctuated-full-echo"),
+        pytest.param("x=10", "Explain why x=10 follows.", 502, id="four-characters"),
+        pytest.param("f(x)=2x+1", "Explain why f(x)=2x+1 holds.", 502, id="unquoted-formula"),
+        pytest.param("函数只有一个输出", "请解释：函数只有一个输出。", 502, id="unquoted-chinese"),
+    ],
+)
+async def test_teach_back_single_token_feedback(
+    client: AsyncClient,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    learner_text: str,
+    feedback: str,
+    expected_status: int,
+) -> None:
+    async def complete(*args, **kwargs) -> str:
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": feedback})
+
+    monkeypatch.setattr(teachback, "complete", complete)
+    response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": learner_text})
+
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json() == {
+            "verdict": "not yet",
+            "missing": ["Define a function"],
+            "feedback": feedback,
+        }
+    else:
+        assert not state_dir.exists()
 
 
 async def test_teach_back_rejections_leave_state_intact(
@@ -464,6 +554,27 @@ async def test_subject_status_falls_back_to_linked_mastery(
     assert response.status_code == 200
     assert await topic_status() == "learning"
     assert store.load(path_id) == before
+
+
+async def test_exam_pack_manifest_skips_router_without_mastery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(catalog, "selection", dict)
+    monkeypatch.setattr(catalog, "installed", lambda name: name != "mastery")
+    reference = "deeptutor.api.routers.exam_packs:router"
+    questions = module_routes.manifests()["questions"]
+    exam_pack_routes = [route for route in questions["routes"] if route["reference"] == reference]
+    questions = {**questions, "routes": exam_pack_routes}
+    monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
+    app = FastAPI()
+    loader = RouterLoader(app)
+    module_routes.mount_module_routes(app, loader)
+
+    assert reference not in loader.records
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        assert (await client.get("/api/exam-packs")).status_code == 404
 
 
 async def test_exam_pack_manifest_mount_uses_learning_auth(
