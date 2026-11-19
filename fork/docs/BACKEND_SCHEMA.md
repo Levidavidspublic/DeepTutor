@@ -13,11 +13,11 @@
 | Pack-topic -> mastery-path link | `data/user/exam_packs_state/links.json` | exam_packs | S3 | `exam_packs.links` |
 | Mock attempts | `data/user/exam_packs_state/attempts/<attemptId>.json` | exam_packs | S7, S3 | `exam_packs.mock` |
 | Decks | `data/user/exam_packs_state/decks/<deckId>.json` | exam_packs | S6 | deck import, topic-to-deck |
-| Teach-back results | `data/user/exam_packs_state/teachback/<packId>/<topicId>.jsonl` | exam_packs | S3, S5 | teach-back endpoint |
+| Teach-back results | `data/user/exam_packs_state/teachback/<packId>/<subjectId>/<topicId>.jsonl` | exam_packs | S3, S5 | teach-back endpoint |
 | Plan sessions | existing calendar service (`deeptutor/services/calendar`) | calendar | S8, S11 | `exam_packs.plan` via calendar API |
 | Study comfort settings | existing settings JSON (`data/user/settings/*.json`), new key `study_comfort` | settings | whole web app | S10 |
 
-Teach-back reads and writes use the pack ID from `pack.json` and the topic ID from its front matter. Pack IDs must be unique among loaded packs. Topic IDs must be unique across subjects within a pack and may repeat across packs.
+The teach-back endpoint resolves the topic within the requested pack and subject. It uses the loaded pack's `id` from `pack.json` and the resolved topic's `subject_id` and `id` for both the storage path and each record. S3 and S5 look up results by the same pack, subject, and topic IDs. Pack IDs must be unique among loaded packs. Topic IDs must be unique across subjects within a pack and may repeat across packs.
 
 Exact upstream storage helpers (path service, JSON store) are reused: `deeptutor/services/path_service.py`, `deeptutor/services/storage` - names confirmed by code-map step in each ticket.
 
@@ -40,7 +40,7 @@ Exact upstream storage helpers (path service, JSON store) are reused: `deeptutor
 - **MockPaper**: attempt_id, pack_id, questionnaire, questions[{id, topic_id, prompt, points}], started_at, minutes.
 - **Attempt result**: attempt_id, answers{qid: text}, marks{qid: {points, feedback}}, total, submitted_at.
 - **Deck**: id, title, source ("csv" | "anki" | "topic"), cards[{front, back, topic_id?}].
-- **TeachBack entry**: at, topic_id, learner_text, verdict ("got it" | "partly" | "not yet"), missing[str].
+- **TeachBack entry**: at, pack_id, subject_id, topic_id, learner_text, verdict ("got it" | "partly" | "not yet"), missing[str].
 
 ## Functions and who calls them
 
