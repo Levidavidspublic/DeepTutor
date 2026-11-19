@@ -68,7 +68,7 @@ it("shows the empty state with a plain next step", async () => {
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
-it("gives each subject a named Continue link with both path segments encoded", async () => {
+it("links each subject by title and keeps Continue pointed to the first subject", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([pack]);
 
   await act(async () => {
@@ -76,13 +76,19 @@ it("gives each subject a named Continue link with both path segments encoded", a
   });
 
   const card = screen.getByRole("article", { name: "Demo Exam Pack" });
-  expect(within(card).getAllByRole("link")).toHaveLength(2);
-  const mathLink = within(card).getByRole("link", { name: "Continue Math" });
-  const scienceLink = within(card).getByRole("link", { name: "Continue Science" });
+  const subjects = within(card).getByRole("list", { name: "Subjects" });
+  expect(within(subjects).getAllByRole("link")).toHaveLength(2);
+  expect(within(card).getAllByRole("link")).toHaveLength(3);
+  const mathLink = within(subjects).getByRole("link", { name: "Math" });
+  const scienceLink = within(subjects).getByRole("link", { name: "Science" });
   expect(mathLink).toHaveAttribute("href", "/learning/exams/demo%20pack/math%231");
   expect(scienceLink).toHaveAttribute("href", "/learning/exams/demo%20pack/science%2Flab");
   expect(within(mathLink).getByText("Math")).toHaveAttribute("lang", pack.ui_lang);
   expect(within(scienceLink).getByText("Science")).toHaveAttribute("lang", pack.ui_lang);
+  expect(within(card).getByRole("link", { name: "Continue" })).toHaveAttribute(
+    "href",
+    "/learning/exams/demo%20pack/math%231",
+  );
 });
 
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {
