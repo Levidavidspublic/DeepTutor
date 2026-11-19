@@ -34,7 +34,8 @@ Exit check: every row of the PRD parity table is shipped and ticked by Amit on p
 First three tickets: Parity checklist page in `fork/docs` with evidence links - Upstream sync dry run to the latest DeepTutor release - Hebrew UI locale (`he`) with RTL layout check.
 
 ## Ordering and parallel work
-- Phase 1 tickets are independent except: EP-02, EP-03 after EP-01; EP-04 after EP-01 and EP-03; UI-03 after UI-01 and UI-02. Dependent tickets branch from their parent's branch while the parent PR is open (stacked PRs, base `main`).
+- EP-02 and EP-03 follow EP-01. EP-04 follows EP-01 and EP-03. These dependent tickets branch from their parent's branch while the parent PR is open (stacked PRs, base `main`).
+- Start UI-03 after both the UI-01 and UI-02 PRs have merged into `main`. Create the UI-03 branch from the updated `main` so it includes both dependencies.
 - Batches of 9 or 15. Up to 15 Codex workers in parallel on the VPS, limited by free RAM (keep >= 4 GB) and disk (keep >= 30 GB).
 
 ## Open questions for Amit
