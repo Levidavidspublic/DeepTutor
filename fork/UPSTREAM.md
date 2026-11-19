@@ -22,5 +22,6 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 | `web/features/ui-layout/classic/ClassicLearningDashboard.tsx` | Workspace-scoped Exams link alongside the classic Learning choices |
 | Settings section registry (file found by code map) | one section entry: Study comfort |
 | `web/locales/*/exam.json` | new files only |
+| `AGENTS.md` (root) | appended section "Project reference (read first)" pointing at `fork/docs/` |
 
 Any other upstream file change needs a note here in the same PR.
