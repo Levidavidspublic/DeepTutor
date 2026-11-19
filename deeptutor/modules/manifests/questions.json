@@ -7,7 +7,9 @@
     "server",
     "mastery"
   ],
-  "optional": [],
+  "optional": [
+    "knowledge"
+  ],
   "paths": [
     "deeptutor/agents/question",
     "deeptutor/api/routers/practice.py",
