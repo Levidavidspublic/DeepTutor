@@ -5,7 +5,7 @@
 Workflow: KITCHEN (rapid prototype). Code model per ticket: Codex `gpt-6.2-sol`, reasoning high. One branch + one PR per ticket to `main`; CodeRabbit reviews; Amit merges.
 
 ## Phase 1 - Foundation (goal: packs load, Exams tab shows them, comfort basics exist)
-Exit check: on a local run with the demo pack, `/learning/exams` lists the demo pack and its subjects; `pytest deeptutor/exam_packs/tests -q` passes; `npm run typecheck` and `npm run i18n:check` pass.
+Exit check: on a local run with the demo pack, `/learning/exams` lists the demo pack and its subjects. Run `pytest deeptutor/exam_packs/tests -q` from the repository root. Run `npm run typecheck` and `npm run i18n:check` from `web/`. All three commands must pass.
 
 Tickets (all small, each = one GitHub issue labelled `fork-ticket` + `phase-1`):
 1. EP-01 Exam Pack models + loader (backend ticket)
