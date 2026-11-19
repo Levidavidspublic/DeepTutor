@@ -347,21 +347,34 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
 
 
 @pytest.mark.parametrize(
-    ("feedback", "expected_status"),
+    ("learner_text", "feedback", "expected_status"),
     [
-        pytest.param("Add a definition and a worked example.", 200, id="ordinary-article"),
-        pytest.param('You wrote "a".', 502, id="double-quotes"),
-        pytest.param("You wrote 'a'.", 502, id="single-quotes"),
-        pytest.param("You wrote “a”.", 502, id="curly-double-quotes"),
-        pytest.param("You wrote ‘a’.", 502, id="curly-single-quotes"),
-        pytest.param("You wrote `a`.", 502, id="inline-code"),
-        pytest.param("a", 502, id="full-echo"),
+        pytest.param("a", "Add a definition and a worked example.", 200, id="ordinary-article"),
+        pytest.param("the", "Explain the rule.", 200, id="three-character-article"),
+        pytest.param("a", 'Explain "a function" in your own words.', 200, id="longer-quote"),
+        pytest.param("a", 'Is "domain" a "set"? Explain why.', 200, id="between-quotes"),
+        pytest.param("a", 'You wrote "a".', 502, id="double-quotes"),
+        pytest.param("a", "You wrote 'a'.", 502, id="single-quotes"),
+        pytest.param("a", "You wrote “a”.", 502, id="curly-double-quotes"),
+        pytest.param("a", "You wrote ‘a’.", 502, id="curly-single-quotes"),
+        pytest.param("a", "You wrote `a`.", 502, id="inline-code"),
+        pytest.param("a", "You wrote «a».", 502, id="guillemets"),
+        pytest.param("a", "You wrote «\u202fa\u202f».", 502, id="spaced-guillemets"),
+        pytest.param("a", "You wrote „a“.", 502, id="low-high-quotes"),
+        pytest.param("כן", "You wrote ״כן״.", 502, id="hebrew-quotes"),
+        pytest.param("a", 'You wrote "a."', 502, id="punctuation-inside-quotes"),
+        pytest.param("a", "a", 502, id="full-echo"),
+        pytest.param("a", "a.", 502, id="punctuated-full-echo"),
+        pytest.param("x=10", "Explain why x=10 follows.", 502, id="four-characters"),
+        pytest.param("f(x)=2x+1", "Explain why f(x)=2x+1 holds.", 502, id="unquoted-formula"),
+        pytest.param("函数只有一个输出", "请解释：函数只有一个输出。", 502, id="unquoted-chinese"),
     ],
 )
 async def test_teach_back_single_token_feedback(
     client: AsyncClient,
     state_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
+    learner_text: str,
     feedback: str,
     expected_status: int,
 ) -> None:
@@ -369,7 +382,7 @@ async def test_teach_back_single_token_feedback(
         return json.dumps({"verdict": "not yet", "missing": [0], "feedback": feedback})
 
     monkeypatch.setattr(teachback, "complete", complete)
-    response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": "a"})
+    response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": learner_text})
 
     assert response.status_code == expected_status
     if expected_status == 200:
