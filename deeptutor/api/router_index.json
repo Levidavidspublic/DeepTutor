@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "fingerprint": "b30305838c249ccc815032ce5d01607f4dc3198455e07517f8b3c92cbdd0a91e",
-=======
-  "fingerprint": "25912119636c474b2e90d14980d2e713689c03612246fa0b8ed4f1c75ff8546a",
->>>>>>> origin/ticket/34-p2-06
+  "fingerprint": "dbdb004141c7898f9aa167211f4128ae57a2d075ffb7b3f51653ac8aec86f158",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3540,6 +3536,30 @@
         ]
       },
       {
+        "path": "/{pack}/subjects/{subject}/decks",
+        "name": "create_exam_deck",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/{pack}/subjects/{subject}/decks",
+        "name": "list_exam_decks",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/subjects/{subject}/decks/{deck_id}",
+        "name": "get_exam_deck",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
         "path": "/{pack}/subjects/{subject}/topics/{topic}/mastery-link",
         "name": "create_mastery_link",
         "kind": "http",
@@ -3548,7 +3568,6 @@
         ]
       },
       {
-<<<<<<< HEAD
         "path": "/{pack}/subjects/{subject}/topics/{topic}/teach-back",
         "name": "submit_teach_back",
         "kind": "http",
@@ -3557,13 +3576,35 @@
         ]
       },
       {
-=======
->>>>>>> origin/ticket/34-p2-06
         "path": "/{pack}/glossary",
         "name": "get_exam_glossary",
         "kind": "http",
         "methods": [
           "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/mock",
+        "name": "start_mock",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/mock/{attempt_id}",
+        "name": "get_mock_attempt",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/mock/{attempt_id}/submit",
+        "name": "submit_mock",
+        "kind": "http",
+        "methods": [
+          "POST"
         ]
       },
       {
