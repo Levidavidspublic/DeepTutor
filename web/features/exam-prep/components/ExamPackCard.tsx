@@ -27,7 +27,12 @@ export function ExamPackCard({
             <ul className="list-disc space-y-1 ps-5 text-muted-foreground" aria-label={subjectsLabel}>
               {pack.subjects.map((subject) => (
                 <li key={subject.id} className="break-words">
-                  <bdi lang={pack.ui_lang}>{subject.title}</bdi>
+                  <Link
+                    href={`/learning/exams/${encodeURIComponent(pack.id)}/${encodeURIComponent(subject.id)}`}
+                    className="underline underline-offset-2"
+                  >
+                    <bdi lang={pack.ui_lang}>{subject.title}</bdi>
+                  </Link>
                 </li>
               ))}
             </ul>

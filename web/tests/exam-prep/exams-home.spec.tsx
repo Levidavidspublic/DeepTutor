@@ -68,13 +68,21 @@ it("shows the empty state with a plain next step", async () => {
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
-it("links Continue to the first subject with both path segments encoded", async () => {
+it("links each subject and keeps Continue pointed to the first subject", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([pack]);
 
   await act(async () => {
     render(<Page />);
   });
 
+  expect(screen.getByRole("link", { name: "Math" })).toHaveAttribute(
+    "href",
+    "/learning/exams/demo%20pack/math%231",
+  );
+  expect(screen.getByRole("link", { name: "Science" })).toHaveAttribute(
+    "href",
+    "/learning/exams/demo%20pack/science",
+  );
   expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
     "href",
     "/learning/exams/demo%20pack/math%231",
