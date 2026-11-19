@@ -19,6 +19,24 @@ const FONT_FAMILIES: Record<StudyComfortSettings["font"], string> = {
   opendyslexic: "OpenDyslexic, system-ui, sans-serif",
 };
 
+// The WOFF files include their license notices in their metadata.
+// Lexend is from Google Fonts (OFL 1.1). OpenDyslexic 2.001 is from the
+// author's open-dyslexic repository (Bitstream Vera and CC BY 3.0).
+const STUDY_FONT_FACES = `
+  @font-face {
+    font-family: Lexend;
+    src: url("/study-fonts/lexend.woff") format("woff");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: OpenDyslexic;
+    src: url("/study-fonts/opendyslexic.woff") format("woff");
+    font-weight: 400;
+    font-display: swap;
+  }
+`;
+
 interface StudyComfortContextValue {
   settings: Readonly<StudyComfortSettings>;
   updateSettings: (changes: Partial<StudyComfortSettings>) => void;
@@ -78,6 +96,7 @@ export function StudyComfortProvider({ children }: { children: ReactNode }) {
 
   return (
     <StudyComfortContext.Provider value={value}>
+      <style>{STUDY_FONT_FACES}</style>
       <div style={style} data-contrast={settings.contrast}>
         {children}
       </div>

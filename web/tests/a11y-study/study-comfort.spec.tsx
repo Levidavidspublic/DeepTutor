@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import {
@@ -49,13 +51,16 @@ it("clamps both numeric ranges and uses defaults for invalid settings", () => {
   });
 });
 
-it("updates the wrapper and restores the saved settings on remount", async () => {
+it.each([
+  { font: "lexend", family: "Lexend" },
+  { font: "opendyslexic", family: "OpenDyslexic" },
+] as const)("declares and restores the bundled $family preference", async ({ font, family }) => {
   function ComfortControls() {
     const { settings, updateSettings } = useStudyComfort();
     return (
       <button
         onClick={() => {
-          updateSettings({ font: "lexend", sizePct: 170 });
+          updateSettings({ font, sizePct: 170 });
           updateSettings({ lineHeight: 1.8, letterSpacing: "wide", contrast: "high" });
         }}
       >
@@ -70,10 +75,25 @@ it("updates the wrapper and restores the saved settings on remount", async () =>
     </StudyComfortProvider>,
   );
   const button = screen.getByRole("button", { name: "Text size 100%" });
+  const face = Array.from(document.styleSheets)
+    .flatMap((sheet) => Array.from(sheet.cssRules))
+    .find(
+      (rule): rule is CSSFontFaceRule =>
+        rule.type === CSSRule.FONT_FACE_RULE &&
+        (rule as CSSFontFaceRule).style.getPropertyValue("font-family") === family,
+    );
+  expect(face).toBeDefined();
+  // jsdom parses the font-face rule but drops the src descriptor from the CSSOM.
+  expect(view.container.querySelector("style")).toHaveTextContent(
+    `font-family: ${family}; src: url("/study-fonts/${font}.woff") format("woff");`,
+  );
+  const asset = readFileSync(resolve("public", "study-fonts", `${font}.woff`));
+  expect(asset.toString("ascii", 0, 4)).toBe("wOFF");
+
   fireEvent.click(button);
   expect(button).toHaveAccessibleName("Text size 150%");
   expect(button.parentElement).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
+    "--study-font": `${family}, system-ui, sans-serif`,
     "--study-size": "150%",
     "--study-line-height": "1.8",
     "--study-letter-spacing": "0.05em",
@@ -88,7 +108,7 @@ it("updates the wrapper and restores the saved settings on remount", async () =>
   );
   const restored = await screen.findByRole("button", { name: "Text size 150%" });
   expect(restored.parentElement).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
+    "--study-font": `${family}, system-ui, sans-serif`,
     "--study-size": "150%",
     "--study-line-height": "1.8",
     "--study-letter-spacing": "0.05em",
