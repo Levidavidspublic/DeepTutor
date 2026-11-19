@@ -40,7 +40,7 @@ _QUOTED_ANSWER_PATTERNS = (
     "`(?:({answer})|[^`]*)`",
     "«({answer})»",
     "„({answer})“",
-    "״(?:({answer})|[^״]*)״",
+    r"(?<!\w)״(?:({answer})|(?:[^״]|(?<=\w)״(?=\w))*)״(?!\w)",
 )
 
 _GRADING_PROMPT = """Assess the learner's explanation against the listed objectives.

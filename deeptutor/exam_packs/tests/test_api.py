@@ -424,6 +424,9 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
         pytest.param("a", "You wrote „ a “.", 502, id="spaced-low-high-quotes"),
         pytest.param("כן", "You wrote ״כן״.", 502, id="hebrew-quotes"),
         pytest.param("כן", "You wrote ״ כן ״.", 502, id="spaced-hebrew-quotes"),
+        pytest.param(
+            "כן", "בדוק את ״צה״ל״ ואז הסבר את ״כן״.", 502, id="quoted-hebrew-acronym-before-answer"
+        ),
         pytest.param("a", 'You wrote "a."', 502, id="punctuation-inside-quotes"),
         pytest.param("a", "a", 502, id="full-echo"),
         pytest.param("a", "a.", 502, id="punctuated-full-echo"),
