@@ -6,13 +6,13 @@ import { useStudyComfort } from "./StudyComfortProvider";
 
 export function ExamStudyFrame({ children }: { children: ReactNode }) {
   const { settings } = useStudyComfort();
-  const readingStyle = {
+  const readingStyle: CSSProperties & { "--exam-reading-size": string } = {
     "--exam-reading-size": `${settings.sizePct / 100}rem`,
     fontFamily: "var(--study-font)",
     fontSize: "var(--exam-reading-size)",
     lineHeight: "var(--study-line-height)",
     letterSpacing: "var(--study-letter-spacing)",
-  } as CSSProperties;
+  };
 
   return (
     <div

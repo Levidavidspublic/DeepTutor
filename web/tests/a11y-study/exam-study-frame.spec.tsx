@@ -46,16 +46,23 @@ it("applies saved reading comfort to the exam route on mount", async () => {
     lineHeight: "var(--study-line-height)",
     letterSpacing: "var(--study-letter-spacing)",
   });
+  expect(content).toHaveClass("[&_.dt-page-action]:[font-size:calc(var(--exam-reading-size)*0.78125)]");
 });
 
 it("sizes direct and nested exam actions from the same reading size", async () => {
   render(
     <ExamsLayout>
       <a href="/pack" className="dt-page-action">Continue pack</a>
+      <div className="text-sm">
+        <a href="/subject" className="dt-page-action">Continue subject</a>
+      </div>
     </ExamsLayout>,
   );
 
-  const frame = screen.getByRole("link", { name: "Continue pack" }).parentElement!;
+  const packAction = screen.getByRole("link", { name: "Continue pack" });
+  const subjectAction = screen.getByRole("link", { name: "Continue subject" });
+  const frame = packAction.parentElement!;
+  expect([...frame.querySelectorAll(".dt-page-action")]).toEqual([packAction, subjectAction]);
   expect(frame).toHaveStyle({
     "--exam-reading-size": "1rem",
     fontSize: "var(--exam-reading-size)",
