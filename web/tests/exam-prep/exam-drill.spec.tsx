@@ -151,6 +151,20 @@ it("reopens a saved deck through its URL and moves with buttons and arrow shortc
   expect(deck.getByRole("button", { name: "Reveal answer" })).toBeEnabled();
 });
 
+it("shows a missing deck for an invalid deck query and only requests the saved list", async () => {
+  window.history.replaceState({}, "", deckUrl(".."));
+  fetchMock.mockImplementation(async (url) => (
+    url === `${decksApi}?${workspaceQuery}`
+      ? Response.json([summary(savedDeck)])
+      : new Response(null, { status: 404 })
+  ));
+  render(<DrillPage />);
+
+  expect(await screen.findByRole("heading", { name: "Not found" })).toBeVisible();
+  expect(await screen.findByRole("link", { name: savedDeck.title })).toHaveAttribute("href", deckUrl(savedDeck.id));
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([`${decksApi}?${workspaceQuery}`]);
+});
+
 it("checks a trimmed, case-insensitive quiz answer and resets it on the next card", async () => {
   window.history.replaceState({}, "", deckUrl(savedDeck.id));
   fetchMock.mockImplementation(async (url) => Response.json(

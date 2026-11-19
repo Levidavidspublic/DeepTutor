@@ -153,7 +153,7 @@ function SelectedDeck({ packId, subjectId, deckId }: { packId: string; subjectId
     let active = true;
     void getExamDeck(packId, subjectId, deckId).then(
       (deck) => {
-        if (active) setState({ status: "ready", data: deck.source === "topic" ? null : deck });
+        if (active) setState({ status: "ready", data: deck?.source === "topic" ? null : deck });
       },
       (error: unknown) => {
         if (!active) return;

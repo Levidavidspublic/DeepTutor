@@ -4,6 +4,7 @@ import { requestJson } from "@/shared/api/client";
 type DeckKind = "csv" | "anki";
 
 export const DECK_FILE_EXTENSIONS = [".csv", ".tsv", ".txt"];
+const DECK_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface DeckInfo {
   id: string;
@@ -27,7 +28,8 @@ export function listExamDecks(packId: string, subjectId: string): Promise<ExamDe
   return requestJson(decksPath(packId, subjectId), { method: "GET" });
 }
 
-export function getExamDeck(packId: string, subjectId: string, deckId: string): Promise<ExamDeck> {
+export async function getExamDeck(packId: string, subjectId: string, deckId: string): Promise<ExamDeck | null> {
+  if (!DECK_ID_PATTERN.test(deckId)) return null;
   return requestJson(`${decksPath(packId, subjectId)}/${encodeURIComponent(deckId)}`, { method: "GET" });
 }
 
