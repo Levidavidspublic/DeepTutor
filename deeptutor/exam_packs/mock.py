@@ -76,12 +76,14 @@ def _attempt_path(attempt_id: UUID) -> Path:
     return get_path_service().user_data_dir / "exam_packs_state" / "attempts" / f"{attempt_id}.json"
 
 
-def save_mock_attempt(paper: MockPaper, ui_lang: str) -> MockAttempt:
+def _attempt_expiry(started_at: datetime, minutes: int) -> datetime:
     try:
-        expires_at = paper.started_at + timedelta(minutes=paper.minutes)
+        return started_at + timedelta(minutes=minutes)
     except OverflowError:
         raise InvalidMockInput("The questionnaire duration is too large.") from None
 
+
+def save_mock_attempt(paper: MockPaper, ui_lang: str) -> MockAttempt:
     attempt = MockAttempt(
         attempt_id=UUID(paper.attempt_id),
         pack_id=paper.pack_id,
@@ -89,7 +91,7 @@ def save_mock_attempt(paper: MockPaper, ui_lang: str) -> MockAttempt:
         questionnaire_code=paper.questionnaire,
         ui_lang=ui_lang,
         started_at=paper.started_at,
-        expires_at=expires_at,
+        expires_at=_attempt_expiry(paper.started_at, paper.minutes),
         minutes=paper.minutes,
         questions=paper.questions,
     )
@@ -162,6 +164,7 @@ async def build_mock(pack: ExamPack, subject: Subject, questionnaire: Questionna
     minutes = questionnaire.minutes
     if isinstance(minutes, bool) or not isinstance(minutes, int) or minutes <= 0:
         raise InvalidMockInput("The questionnaire duration must be a positive integer.")
+    _attempt_expiry(datetime.now(timezone.utc), minutes)
 
     subject_topics = {topic.id: topic for topic in pack.topics if topic.subject_id == subject.id}
     eligible = [
