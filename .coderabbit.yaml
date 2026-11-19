@@ -4,3 +4,11 @@
 reviews:
   auto_review:
     enabled: false
+    # Lane D 2026-11-19: Cursor loop brief PRs (branch loop/*, title "[LOOP BRIEF] ...", author
+    # cursor[bot]) are relayed and closed by the VPS loop runner, so never review them.
+    # Title match is case-insensitive. ignore_usernames also silences the "Review skipped" notice
+    # (auto reviews are off here anyway; "@coderabbitai review" still works on any PR).
+    ignore_title_keywords:
+      - "[LOOP BRIEF]"
+    ignore_usernames:
+      - "cursor[bot]"
