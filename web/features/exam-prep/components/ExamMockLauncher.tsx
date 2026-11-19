@@ -33,12 +33,14 @@ export function ExamMockLauncher({
   const [selectedCode, setSelectedCode] = useState(subject.questionnaires[0]?.code ?? "");
   const [launch, setLaunch] = useState<LaunchState>({ status: "idle" });
   const inFlight = useRef(false);
+  const startButton = useRef<HTMLButtonElement>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
 
     inFlight.current = true;
+    startButton.current?.focus();
     setLaunch({ status: "pending" });
     const workspaceId = activeWorkspaceId();
     try {
@@ -70,6 +72,7 @@ export function ExamMockLauncher({
       onClose={onClose}
       footer={(
         <Button
+          ref={startButton}
           type="submit"
           form={formId}
           aria-disabled={pending || undefined}

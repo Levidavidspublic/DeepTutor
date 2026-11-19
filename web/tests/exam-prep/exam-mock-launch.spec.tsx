@@ -81,14 +81,15 @@ it("opens by keyboard and starts the chosen questionnaire once in the active wor
   await user.selectOptions(picker, dialog.getByRole("option", { name: "Functions · 45 minutes" }));
   expect(fetchMock).toHaveBeenCalledTimes(1);
 
-  await user.tab();
-  expect(dialog.getByRole("button", { name: "Start" })).toHaveFocus();
+  picker.focus();
   const form = picker.form!;
   act(() => {
     fireEvent.submit(form);
     fireEvent.submit(form);
   });
-  expect(dialog.getByRole("button", { name: "Starting..." })).toHaveAttribute("aria-disabled", "true");
+  const starting = dialog.getByRole("button", { name: "Starting..." });
+  expect(starting).toHaveAttribute("aria-disabled", "true");
+  expect(starting).toHaveFocus();
   expect(picker).toBeDisabled();
   await user.keyboard("{Escape}{Enter}");
   expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -110,8 +111,11 @@ it.each([502, 503])("keeps the selection and retries after a %i response", async
   await user.click(await screen.findByRole("button", { name: "Mock exam" }));
   const dialog = within(screen.getByRole("dialog", { name: "Mock exam" }));
   const picker = dialog.getByRole("combobox", { name: "Select" });
+  await waitFor(() => expect(picker).toHaveFocus());
   await user.selectOptions(picker, questionnaireCode);
-  await user.click(dialog.getByRole("button", { name: "Start" }));
+  await user.tab();
+  expect(dialog.getByRole("button", { name: "Start" })).toHaveFocus();
+  await user.keyboard("{Enter}");
   const alert = await dialog.findByRole("alert");
   if (status === 503) {
     expect(alert).toHaveTextContent("No language model is configured yet.");
@@ -126,7 +130,8 @@ it.each([502, 503])("keeps the selection and retries after a %i response", async
   expect(picker).toBeEnabled();
   expect(redirect).not.toHaveBeenCalled();
 
-  await user.click(dialog.getByRole("button", { name: "Retry" }));
+  expect(dialog.getByRole("button", { name: "Retry" })).toHaveFocus();
+  await user.keyboard("{Enter}");
   expect(fetchMock).toHaveBeenCalledTimes(3);
   expect(fetchMock).toHaveBeenNthCalledWith(2, startPath, startOptions);
   expect(fetchMock).toHaveBeenNthCalledWith(3, startPath, startOptions);
