@@ -38,11 +38,13 @@ it("applies saved reading comfort to the exam route on mount", async () => {
     "--study-letter-spacing": "0.05em",
   });
   expect(content).toHaveStyle({
+    "--exam-reading-size": "1.25rem",
     fontFamily: "var(--study-font)",
-    fontSize: "var(--study-size)",
+    fontSize: "var(--exam-reading-size)",
     lineHeight: "var(--study-line-height)",
     letterSpacing: "var(--study-letter-spacing)",
   });
+  expect(content).toHaveClass("[&_.dt-page-action]:[font-size:calc(var(--exam-reading-size)*0.78125)]");
 });
 
 it("opens and closes focus with the keyboard and shows exactly one study timer", async () => {
