@@ -25,7 +25,7 @@ data/user/exam_packs/<pack-id>/   (runtime folder; private packs mounted here)
 - DeepTutor's own backend: Python services with JSON/SQLite storage under `data/user/` (upstream pattern; settings in `data/user/settings/*.json`). No Convex, no Firebase. (EXTRAPOLATED: matches upstream; Amit's product default of Firebase is not applied because this is an upstream fork.)
 - New package `deeptutor/exam_packs/`:
   - `models.py` - dataclasses: ExamPack, Subject, Questionnaire, Topic, GlossaryTerm, MockPaper, Attempt.
-  - `loader.py` - reads `pack.json` + `topics/*.md` + `glossary.csv` from the packs folder; validates; caches.
+  - `loader.py` - reads `pack.json`, `topics/<subject>/<topicId>.md`, and `glossary.csv` from each pack folder, then validates and caches the pack.
   - `glossary.py` - term lookup for "keep the Hebrew term" rendering and prompt injection.
   - `mock.py` - builds a timed mock from a questionnaire's topic weights, using `deep_question` for original questions and `deeptutor/learning/grading.py` for marking.
   - `plan.py` - turns exam dates + topics into calendar sessions through `deeptutor/services/calendar`.
