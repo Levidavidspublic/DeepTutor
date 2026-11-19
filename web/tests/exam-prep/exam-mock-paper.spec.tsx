@@ -149,6 +149,22 @@ it("freezes editing and submits the current answers once when the deadline passe
   expect(screen.getByText("Total 40 / 100")).toBeVisible();
 });
 
+it("keeps the last in-time selection and rejects edits after the deadline before the next tick", async () => {
+  await openPaper();
+  fetchMock.mockResolvedValueOnce(Response.json(result));
+
+  await act(async () => {
+    vi.setSystemTime(deadline - 1);
+    fireEvent.click(screen.getByRole("radio", { name: "A. 2" }));
+    vi.setSystemTime(deadline);
+    fireEvent.click(screen.getByRole("radio", { name: "B. 3" }));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+
+  expectSubmission(2, { q1: "A" });
+  expect(screen.getByText("Total 40 / 100")).toBeVisible();
+});
+
 it("opens an already expired attempt as read-only and links back to its scoped subject", async () => {
   vi.setSystemTime(deadline);
   await openPaper();
@@ -161,23 +177,29 @@ it("opens an already expired attempt as read-only and links back to its scoped s
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
-it("checks the deadline when the tab becomes visible and leaves a failed expiry submit for manual retry", async () => {
+it("checks the deadline when the tab becomes visible and allows a manual retry after a failed expiry submit", async () => {
   await openPaper();
   const radio = screen.getByRole("radio", { name: "A. 2" });
   fireEvent.click(radio);
-  fetchMock.mockResolvedValueOnce(Response.json({ detail: "Unavailable" }, { status: 503 }));
+  fetchMock
+    .mockResolvedValueOnce(Response.json({ detail: "Unavailable" }, { status: 503 }))
+    .mockResolvedValueOnce(Response.json(result));
 
   vi.setSystemTime(deadline);
   await act(async () => document.dispatchEvent(new Event("visibilitychange")));
 
   expect(radio).toBeDisabled();
   expectSubmission(2, { q1: "A" });
-  expect(within(screen.getByRole("alert")).getByRole("button", { name: "Retry" })).toBeVisible();
+  const retry = within(screen.getByRole("alert")).getByRole("button", { name: "Retry" });
+  expect(retry).toBeVisible();
   act(() => {
     document.dispatchEvent(new Event("visibilitychange"));
     vi.advanceTimersByTime(10_000);
   });
   expect(fetchMock).toHaveBeenCalledTimes(2);
+  await act(async () => fireEvent.click(retry));
+  expectSubmission(3, { q1: "A" });
+  expect(screen.getByText("Total 40 / 100")).toBeVisible();
 });
 
 it("keeps a manual submission in flight at expiry and offers a retry for a recoverable error", async () => {
