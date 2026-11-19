@@ -21,9 +21,9 @@ type PackList =
   | { status: "ready"; packs: ExamPackSummary[] };
 
 export function ExamsHome() {
-  const { t, i18n } = useTranslation("exam");
-  const locale = normalizeLanguage(i18n.language);
+  const { i18n, t } = useTranslation("exam");
   const { t: tApp } = useTranslation("app");
+  const locale = normalizeLanguage(i18n.language);
   const [list, setList] = useState<PackList>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
 
