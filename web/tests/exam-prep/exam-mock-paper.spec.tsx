@@ -161,6 +161,25 @@ it("opens an already expired attempt as read-only and links back to its scoped s
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
+it("checks the deadline when the tab becomes visible and leaves a failed expiry submit for manual retry", async () => {
+  await openPaper();
+  const radio = screen.getByRole("radio", { name: "A. 2" });
+  fireEvent.click(radio);
+  fetchMock.mockResolvedValueOnce(Response.json({ detail: "Unavailable" }, { status: 503 }));
+
+  vi.setSystemTime(deadline);
+  await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+
+  expect(radio).toBeDisabled();
+  expectSubmission(2, { q1: "A" });
+  expect(within(screen.getByRole("alert")).getByRole("button", { name: "Retry" })).toBeVisible();
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    vi.advanceTimersByTime(10_000);
+  });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
 it("keeps a manual submission in flight at expiry and offers a retry for a recoverable error", async () => {
   await openPaper();
   const pending = Promise.withResolvers<Response>();

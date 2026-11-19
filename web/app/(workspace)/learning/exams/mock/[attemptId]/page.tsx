@@ -113,17 +113,27 @@ function MockPaper({ attempt, openedAt }: { attempt: MockAttempt; openedAt: numb
     if (finished) return;
 
     function tick() {
+      window.clearTimeout(timeout);
       const remaining = Math.max(0, deadline - Date.now());
       setSecondsLeft(Math.ceil(remaining / 1000));
       if (remaining === 0) {
+        document.removeEventListener("visibilitychange", checkOnReturn);
         submitAtDeadline();
       } else {
         timeout = window.setTimeout(tick, remaining % 1000 || 1000);
       }
     }
 
+    function checkOnReturn() {
+      if (document.visibilityState === "visible") tick();
+    }
+
     let timeout = window.setTimeout(tick, 0);
-    return () => window.clearTimeout(timeout);
+    document.addEventListener("visibilitychange", checkOnReturn);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener("visibilitychange", checkOnReturn);
+    };
   }, [deadline, finished]);
 
   useEffect(() => {
