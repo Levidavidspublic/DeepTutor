@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from deeptutor.agents.question.pipeline import QuestionPipeline, QuestionType, QuizTemplate
 from deeptutor.core.context import UnifiedContext
+from deeptutor.runtime.registry.tool_registry import ToolRegistry
 from deeptutor.runtime.stream_bus import StreamBus
 
 from .models import ExamPack, MockPaper, MockQuestion, Questionnaire, Subject
@@ -28,8 +29,12 @@ class InvalidMockGeneration(ValueError):
 
 
 class _MockQuestionPipeline(QuestionPipeline):
+    def __init__(self, *, language: str) -> None:
+        super().__init__(language=language)
+        # Keep model-issued tool calls from changing user state during generation.
+        self.registry = ToolRegistry()
+
     def _resolved_tools(self, context: UnifiedContext) -> list[str]:
-        # The quiz pipeline normally auto-mounts tools that can write user state.
         return []
 
 

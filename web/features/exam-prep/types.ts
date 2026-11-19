@@ -2,11 +2,6 @@ interface ExamSubjectSummary {
   id: string;
   title: string;
   title_source: string;
-<<<<<<< HEAD
-  progress?: { done: number; total: number };
-  exam_date?: string | null;
-=======
->>>>>>> origin/main
 }
 
 interface ExamQuestionnaire {
@@ -28,30 +23,16 @@ export interface ExamPackSummary {
 export interface ExamSubjectDetail {
   id: string;
   title: string;
-<<<<<<< HEAD
-  source_lang?: string;
-  ui_lang?: string;
-=======
->>>>>>> origin/main
   questionnaires: ExamQuestionnaire[];
   topics: ExamTopic[];
 }
 
-<<<<<<< HEAD
-export type ExamTopicStatus = "new" | "learning" | "review" | "done";
-
-=======
->>>>>>> origin/main
 export interface ExamTopic {
   id: string;
   title: string;
   title_source: string;
   weight: number;
   objectives: string[];
-<<<<<<< HEAD
-  status?: ExamTopicStatus;
-=======
->>>>>>> origin/main
 }
 
 export interface GlossaryTerm {

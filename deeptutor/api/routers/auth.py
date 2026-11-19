@@ -729,7 +729,6 @@ def _learning_surface_for_path(
         ("/api/chat", "chat"),
         ("/api/question", "chat"),
         ("/api/question-notebook", "chat"),
-        ("/api/exam-packs", "chat"),
         ("/api/sessions", "chat"),
         # Task cards are private to the learner's current content workspace.
         ("/api/task-board", "chat"),

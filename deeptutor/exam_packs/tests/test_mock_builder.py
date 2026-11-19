@@ -94,6 +94,7 @@ async def test_build_mock_maps_templates_to_topics_in_weight_order(sample_pack, 
     assert pipeline.language == pack.ui_lang
     assert call.kwargs["context"].language == pack.ui_lang
     assert pipeline._resolved_tools(call.kwargs["context"]) == []
+    assert pipeline.registry.list_tools() == []
     assert isinstance(call.kwargs["stream"], StreamBus)
     assert call.kwargs["num_questions"] == 5
     templates = call.kwargs["templates_override"]
