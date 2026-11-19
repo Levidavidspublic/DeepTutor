@@ -1,11 +1,15 @@
 import { useId } from "react";
 import Link from "next/link";
 import { pageActionClass } from "@/components/layout/FeaturePage";
+<<<<<<< HEAD
 import { ProgressRing } from "@/components/space/learning/ProgressRing";
+=======
+>>>>>>> origin/main
 import type { ExamPackSummary } from "../types";
 
 export function ExamPackCard({
   pack,
+<<<<<<< HEAD
   locale,
   subjectsLabel,
   continueLabel,
@@ -25,6 +29,17 @@ export function ExamPackCard({
     dateStyle: "medium",
     timeZone: "UTC",
   });
+=======
+  subjectsLabel,
+  continueLabel,
+}: {
+  pack: ExamPackSummary;
+  subjectsLabel: string;
+  continueLabel: string;
+}) {
+  const titleId = useId();
+  const packPath = `/learning/exams/${encodeURIComponent(pack.id)}`;
+>>>>>>> origin/main
 
   return (
     <article className="flex h-full flex-col gap-4 rounded-xl bg-muted/45 p-4" aria-labelledby={titleId}>
@@ -35,6 +50,7 @@ export function ExamPackCard({
         <div className="space-y-1 text-sm">
           <p className="font-medium">{subjectsLabel}</p>
           <ul className="list-disc space-y-2 ps-5 text-muted-foreground" aria-label={subjectsLabel}>
+<<<<<<< HEAD
             {pack.subjects.map((subject) => {
               const progress = subject.progress;
               const hasProgress = progress && progress.total > 0;
@@ -79,6 +95,21 @@ export function ExamPackCard({
                 </li>
               );
             })}
+=======
+            {pack.subjects.map((subject) => (
+              <li key={subject.id} className="break-words">
+                <Link
+                  href={`${packPath}/${encodeURIComponent(subject.id)}`}
+                  aria-describedby={titleId}
+                  className={`${pageActionClass()} max-w-full`}
+                >
+                  <span className="min-w-0">
+                    {continueLabel} <bdi lang={pack.ui_lang}>{subject.title}</bdi>
+                  </span>
+                </Link>
+              </li>
+            ))}
+>>>>>>> origin/main
           </ul>
         </div>
       )}

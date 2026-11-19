@@ -4,6 +4,7 @@ import type { ExamPackSummary, ExamSubjectDetail, GlossaryTerm } from "./types";
 
 const EXAM_PACKS_PATH = "/api/exam-packs";
 
+<<<<<<< HEAD
 export interface TeachBackResult {
   verdict: "got it" | "partly" | "not yet";
   missing: string[];
@@ -18,6 +19,8 @@ function examTopicPath(packId: string, subjectId: string, topicId: string): stri
   return `${examSubjectPath(packId, subjectId)}/topics/${encodeURIComponent(topicId)}`;
 }
 
+=======
+>>>>>>> origin/main
 export function listExamPacks(): Promise<ExamPackSummary[]> {
   return requestJson(EXAM_PACKS_PATH, { method: "GET" });
 }
@@ -26,6 +29,7 @@ export function getExamSubject(
   packId: string,
   subjectId: string,
 ): Promise<ExamSubjectDetail> {
+<<<<<<< HEAD
   return requestJson(examSubjectPath(packId, subjectId), { method: "GET" });
 }
 
@@ -49,6 +53,10 @@ export function submitTeachBack(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ learner_text: learnerText }),
   });
+=======
+  const path = `${EXAM_PACKS_PATH}/${encodeURIComponent(packId)}/subjects/${encodeURIComponent(subjectId)}`;
+  return requestJson(path, { method: "GET" });
+>>>>>>> origin/main
 }
 
 export function getGlossary(packId: string, q?: string): Promise<GlossaryTerm[]> {

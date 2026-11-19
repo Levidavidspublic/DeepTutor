@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+<<<<<<< HEAD
 from datetime import date, datetime
+=======
+from datetime import date
+>>>>>>> origin/main
 from pathlib import Path
 
 
@@ -55,6 +59,7 @@ class GlossaryTerm:
     term_ui: str
     note: str
     topic_ids: list[str]
+<<<<<<< HEAD
 
 
 @dataclass
@@ -81,3 +86,5 @@ class MockPaper:
     questions: list[MockQuestion]
     started_at: datetime
     minutes: int
+=======
+>>>>>>> origin/main

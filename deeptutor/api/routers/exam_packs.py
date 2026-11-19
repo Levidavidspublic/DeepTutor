@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """API for runtime exam packs and topic progress."""
 
 from __future__ import annotations
@@ -22,6 +23,19 @@ from deeptutor.exam_packs.teachback import (
     grade_answer,
 )
 from deeptutor.services.llm import LLMConfigError, LLMError
+=======
+"""Read-only API for runtime exam packs."""
+
+from __future__ import annotations
+
+from threading import Lock
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, load_packs
+from deeptutor.exam_packs.glossary import find_terms
+>>>>>>> origin/main
 
 router = APIRouter()
 
@@ -29,17 +43,23 @@ _packs: list[ExamPack] | None = None
 _packs_lock = Lock()
 
 
+<<<<<<< HEAD
 class SubjectProgress(BaseModel):
     done: int
     total: int
 
 
+=======
+>>>>>>> origin/main
 class SubjectSummary(BaseModel):
     id: str
     title: str
     title_source: str
+<<<<<<< HEAD
     progress: SubjectProgress
     exam_date: date | None
+=======
+>>>>>>> origin/main
 
 
 class PackSummary(BaseModel):
@@ -57,14 +77,20 @@ class TopicSummary(BaseModel):
     title_source: str
     weight: float
     objectives: list[str]
+<<<<<<< HEAD
     status: TopicStatus
+=======
+>>>>>>> origin/main
 
 
 class SubjectDetail(BaseModel):
     id: str
     title: str
+<<<<<<< HEAD
     source_lang: str
     ui_lang: str
+=======
+>>>>>>> origin/main
     questionnaires: list[Questionnaire]
     topics: list[TopicSummary]
 
@@ -84,6 +110,7 @@ def _get_pack(pack_id: str) -> ExamPack:
     raise HTTPException(status_code=404, detail="Exam pack not found")
 
 
+<<<<<<< HEAD
 def _get_subject(exam_pack: ExamPack, subject_id: str) -> Subject:
     for subject in exam_pack.subjects:
         if subject.id == subject_id:
@@ -213,6 +240,25 @@ async def submit_teach_back(pack: str, subject: str, topic: str, request: Reques
 
     await run_in_threadpool(append_result, exam_pack.id, exam_topic, result)
     return result
+=======
+@router.get("", response_model=list[PackSummary])
+def list_exam_packs() -> list[ExamPack]:
+    return _get_packs()
+
+
+@router.get("/{pack}/subjects/{subject}", response_model=SubjectDetail)
+def get_exam_subject(pack: str, subject: str) -> dict:
+    exam_pack = _get_pack(pack)
+    for exam_subject in exam_pack.subjects:
+        if exam_subject.id == subject:
+            return {
+                "id": exam_subject.id,
+                "title": exam_subject.title,
+                "questionnaires": exam_subject.questionnaires,
+                "topics": [topic for topic in exam_pack.topics if topic.subject_id == subject],
+            }
+    raise HTTPException(status_code=404, detail="Exam subject not found")
+>>>>>>> origin/main
 
 
 @router.get("/{pack}/glossary", response_model=list[GlossaryTerm])
