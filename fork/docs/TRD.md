@@ -1,6 +1,6 @@
 # TRD - DeepTutor fork: native exam study + better UX/UI
 
-**Verdict.** Build on DeepTutor's own stack (FastAPI + Python services, Next.js App Router web). Add one Python package (`deeptutor/exam_packs/`), one API router, one web feature folder and one Learning route group. Touch upstream files only at registration points listed in `fork/UPSTREAM.md`. Private content is a runtime folder, never a repo file.
+**Verdict.** Build on DeepTutor's own stack (FastAPI + Python services, Next.js App Router web). Add one Python package (`deeptutor/exam_packs/`), one API router, one web feature folder and one Learning route group. Limit upstream edits to the changes listed under [Constraints](#constraints). Private content is a runtime folder, never a repo file.
 
 ## Architecture
 
@@ -25,12 +25,12 @@ data/user/exam_packs/<pack-id>/   (runtime folder; private packs mounted here)
 - DeepTutor's own backend: Python services with JSON/SQLite storage under `data/user/` (upstream pattern; settings in `data/user/settings/*.json`). No Convex, no Firebase. (EXTRAPOLATED: matches upstream; Amit's product default of Firebase is not applied because this is an upstream fork.)
 - New package `deeptutor/exam_packs/`:
   - `models.py` - dataclasses: ExamPack, Subject, Questionnaire, Topic, GlossaryTerm, MockPaper, Attempt.
-  - `loader.py` - reads `pack.json` + `topics/*.md` + `glossary.csv` from the packs folder; validates; caches.
+  - `loader.py` - reads `pack.json`, `topics/<subject>/<topicId>.md`, and `glossary.csv` from each pack folder, then validates and caches the pack.
   - `glossary.py` - term lookup for "keep the Hebrew term" rendering and prompt injection.
   - `mock.py` - builds a timed mock from a questionnaire's topic weights, using `deep_question` for original questions and `deeptutor/learning/grading.py` for marking.
   - `plan.py` - turns exam dates + topics into calendar sessions through `deeptutor/services/calendar`.
   - `tests/` - pytest, added to `testpaths` in one line of `pyproject.toml`.
-- New router `deeptutor/api/routers/exam_packs.py`, registered in `deeptutor/api/router_loader.py`'s module list (one line).
+- The route entry for `deeptutor.api.routers.exam_packs:router` in `deeptutor/modules/manifests/questions.json` sets the `/api/exam-packs` prefix and the `learning` auth policy. When the `questions` module is enabled, `mount_module_routes` mounts the router with that policy during FastAPI app assembly.
 
 ## APIs (new, REST under the existing API prefix)
 
@@ -57,7 +57,7 @@ Exact prefix and auth dependency: copy whatever `routers/practice.py` uses (code
 ## Constraints
 
 - Public repo: no private content, no keys, no personal data. A pytest privacy guard (ticket EP-05) scans fork-owned files for private markers and key-shaped strings.
-- Upstream merge path: new code in new files. Upstream files allowed to change: `router_loader.py` (1 line), `pyproject.toml` testpaths (1 line), the Learning tab list (1 entry), locale folders (new `exam.json` files only), settings section registry (1 entry). Each listed in `fork/UPSTREAM.md`.
+- Upstream merge path: new code in new files. Upstream files allowed to change: `deeptutor/modules/manifests/questions.json` (one exam-pack route entry gated by `questions` module enablement and using the `learning` auth policy), `pyproject.toml` testpaths (1 line), the Learning tab list (1 entry), locale folders (new `exam.json` files only), settings section registry (1 entry). See `fork/UPSTREAM.md` for the upstream merge workflow.
 - Tests: Python `pytest deeptutor/exam_packs/tests -q`; web `npm run typecheck`, `npx vitest run <file>`, `npm run i18n:check`, `npm run lint`. A full `npm run check` is too slow per ticket; run on the docs PR and weekly. (EXTRAPOLATED)
 - Runtime on the VPS: Python 3.13 venv at `/workspaces/.venv-deeptutor`, Node 24 (upstream asks Node 22 LTS; 24 is used for now - mismatch noted).
 - Models: tutor calls go through DeepTutor's existing provider settings. The self-hoster picks the provider. Nothing in the fork hard-codes a provider or key.
@@ -79,5 +79,5 @@ tests/                upstream tests (untouched)
 3. Which tutor model should the Bagrut pack recommend by default (pack setting only, no key)?
 
 ## Sources
-- DeepTutor v1.7.3: `AGENTS.md`, `deeptutor/api/routers/*`, `deeptutor/api/router_loader.py`, `web/package.json` scripts, `web/scripts/i18n_parity.mjs`, `pyproject.toml` (pytest testpaths).
+- DeepTutor v1.7.3: `AGENTS.md`, `deeptutor/api/routers/*`, `deeptutor/api/module_routes.py`, `deeptutor/api/main.py`, `web/package.json` scripts, `web/scripts/i18n_parity.mjs`, `pyproject.toml` (pytest testpaths).
 - omni-tutor `study/src` module comments. PRD (this folder).
