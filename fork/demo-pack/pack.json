@@ -1,0 +1,26 @@
+{
+  "id": "demo-algebra",
+  "title": "Demo Algebra",
+  "exam": "Demo Exam",
+  "source_lang": "he",
+  "ui_lang": "en",
+  "subjects": [
+    {
+      "id": "algebra",
+      "title": "Algebra",
+      "title_source": "אלגברה",
+      "questionnaires": [
+        {
+          "code": "DEMO-1",
+          "title": "Algebra Basics",
+          "minutes": 60,
+          "topic_weights": {
+            "linear-equations": 0.4,
+            "functions": 0.35,
+            "percentages": 0.25
+          }
+        }
+      ]
+    }
+  ]
+}
