@@ -1,10 +1,14 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   StudyComfortProvider,
   useStudyComfort,
 } from "@/features/a11y-study/StudyComfortProvider";
 import { clampStudyComfort } from "@/features/a11y-study/studyComfort";
+
+vi.mock("next/font/google", () => ({
+  Lexend: () => ({ style: { fontFamily: "__Lexend_test, system-ui, sans-serif" } }),
+}));
 
 it("applies the default study comfort settings to the wrapper", () => {
   render(
@@ -49,49 +53,84 @@ it("clamps both numeric ranges and uses defaults for invalid settings", () => {
   });
 });
 
-it("updates the wrapper and restores the saved settings on remount", async () => {
-  function ComfortControls() {
-    const { settings, updateSettings } = useStudyComfort();
-    return (
-      <button
-        onClick={() => {
-          updateSettings({ font: "lexend", sizePct: 170 });
-          updateSettings({ lineHeight: 1.8, letterSpacing: "wide", contrast: "high" });
-        }}
-      >
-        Text size {settings.sizePct}%
-      </button>
+it.each([
+  { requested: "lexend", saved: "lexend", family: "__Lexend_test, system-ui, sans-serif" },
+  { requested: "opendyslexic", saved: "system", family: "system-ui, sans-serif" },
+] as const)(
+  "applies and restores the wrapper settings after requesting $requested",
+  async ({ requested, saved, family }) => {
+    function ComfortControls() {
+      const { settings, updateSettings } = useStudyComfort();
+      return (
+        <button
+          onClick={() => {
+            updateSettings({ font: requested, sizePct: 170 });
+            updateSettings({ lineHeight: 1.8, letterSpacing: "wide", contrast: "high" });
+          }}
+        >
+          {settings.font}, text size {settings.sizePct}%
+        </button>
+      );
+    }
+
+    const view = render(
+      <StudyComfortProvider>
+        <ComfortControls />
+      </StudyComfortProvider>,
     );
+    const button = screen.getByRole("button", { name: "system, text size 100%" });
+    fireEvent.click(button);
+    expect(button).toHaveAccessibleName(`${saved}, text size 150%`);
+    const expectedStyle = {
+      "--study-font": family,
+      "--study-size": "150%",
+      "--study-line-height": "1.8",
+      "--study-letter-spacing": "0.05em",
+    };
+    expect(button.parentElement).toHaveStyle(expectedStyle);
+    expect(button.parentElement).toHaveAttribute("data-contrast", "high");
+    expect(JSON.parse(localStorage.getItem("deeptutor-study-comfort") ?? "null")).toEqual({
+      font: saved,
+      sizePct: 150,
+      lineHeight: 1.8,
+      letterSpacing: "wide",
+      contrast: "high",
+    });
+
+    view.unmount();
+    render(
+      <StudyComfortProvider>
+        <ComfortControls />
+      </StudyComfortProvider>,
+    );
+    const restored = await screen.findByRole("button", { name: `${saved}, text size 150%` });
+    expect(restored.parentElement).toHaveStyle(expectedStyle);
+    expect(restored.parentElement).toHaveAttribute("data-contrast", "high");
+  },
+);
+
+it("restores the other preferences when a saved font is no longer supported", async () => {
+  const storageKey = "deeptutor-study-comfort";
+  localStorage.setItem(storageKey, JSON.stringify({ font: "opendyslexic", sizePct: 125 }));
+
+  function SavedComfort() {
+    const { settings } = useStudyComfort();
+    return <p>{settings.font} at {settings.sizePct}%</p>;
   }
 
-  const view = render(
-    <StudyComfortProvider>
-      <ComfortControls />
-    </StudyComfortProvider>,
-  );
-  const button = screen.getByRole("button", { name: "Text size 100%" });
-  fireEvent.click(button);
-  expect(button).toHaveAccessibleName("Text size 150%");
-  expect(button.parentElement).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
-    "--study-size": "150%",
-    "--study-line-height": "1.8",
-    "--study-letter-spacing": "0.05em",
-  });
-  expect(button.parentElement).toHaveAttribute("data-contrast", "high");
-
-  view.unmount();
   render(
     <StudyComfortProvider>
-      <ComfortControls />
+      <SavedComfort />
     </StudyComfortProvider>,
   );
-  const restored = await screen.findByRole("button", { name: "Text size 150%" });
+
+  const restored = await screen.findByText("system at 125%");
   expect(restored.parentElement).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
-    "--study-size": "150%",
-    "--study-line-height": "1.8",
-    "--study-letter-spacing": "0.05em",
+    "--study-font": "system-ui, sans-serif",
+    "--study-size": "125%",
   });
-  expect(restored.parentElement).toHaveAttribute("data-contrast", "high");
+  expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toMatchObject({
+    font: "system",
+    sizePct: 125,
+  });
 });

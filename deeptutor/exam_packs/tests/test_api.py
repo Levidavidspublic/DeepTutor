@@ -1,106 +1,608 @@
+import asyncio
+from datetime import datetime, timezone
 import json
 from pathlib import Path
+from shutil import copytree
+from threading import get_ident
 
 from fastapi import FastAPI, HTTPException
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 import pytest
+import pytest_asyncio
 
 from deeptutor.api import module_routes
 from deeptutor.api.router_loader import RouterLoader
-from deeptutor.api.routers import exam_packs
-from deeptutor.api.routers.auth import require_learning_surface
+from deeptutor.api.routers import auth, exam_packs
+from deeptutor.api.routers.auth import require_auth, require_learning_surface
+from deeptutor.exam_packs import teachback
+from deeptutor.learning.models import RepetitionState, ReviewTask
+from deeptutor.learning.storage import LearningStore
+from deeptutor.modules import catalog
+from deeptutor.multi_user import learning_access
+from deeptutor.services.auth import TokenPayload
+from deeptutor.services.llm import LLMConfigError, LLMError
+from deeptutor.services.path_service import PathService
 
 from .test_loader import pack_path as pack_path
 
+pytestmark = pytest.mark.asyncio
+SUBJECT_URL = "/api/exam-packs/sample-pack/subjects/math"
+FUNCTIONS_URL = f"{SUBJECT_URL}/topics/functions"
+ANSWER = "Each input gives exactly one output."
 
-def test_exam_pack_routes(pack_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+
+@pytest_asyncio.fixture(autouse=True)
+async def keep_loop_responsive():
+    # As in test_links, let restricted sandboxes process worker-thread completions.
+    loop = asyncio.get_running_loop()
+
+    def tick() -> None:
+        nonlocal timer
+        timer = loop.call_later(0.01, tick)
+
+    timer = loop.call_later(0.01, tick)
+    try:
+        yield
+    finally:
+        timer.cancel()
+
+
+@pytest.fixture
+def state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    service = PathService(workspace_root=tmp_path / "runtime" / "data")
+    monkeypatch.setattr(PathService, "_instance", service)
+    return service.user_data_dir / "exam_packs_state" / "teachback"
+
+
+@pytest_asyncio.fixture
+async def client(pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     app = FastAPI()
-    app.include_router(exam_packs.router, prefix="/exam-packs")
+    app.include_router(exam_packs.router, prefix="/api/exam-packs")
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        yield client
 
-    with TestClient(app) as client:
-        response = client.get("/exam-packs")
-        assert response.status_code == 200
-        assert response.json() == [
-            {
-                "id": "sample-pack",
-                "title": "Sample Pack",
-                "exam": "Sample Exam",
-                "source_lang": "he",
-                "ui_lang": "en",
-                "subjects": [{"id": "math", "title": "Math", "title_source": "מתמטיקה"}],
-            }
-        ]
 
-        response = client.get("/exam-packs/sample-pack/subjects/math")
-        assert response.status_code == 200
-        assert response.json() == {
-            "id": "math",
-            "title": "Math",
-            "questionnaires": [
+async def test_exam_pack_routes(
+    pack_path: Path, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz == timezone.utc
+            return cls(2027, 2, 3, tzinfo=tz)
+
+    monkeypatch.setattr(exam_packs, "datetime", FrozenDateTime)
+    metadata_path = pack_path / "pack.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["subjects"][0]["exam_dates"] = ["2027-02-08", "2027-02-02", "2027-02-03"]
+    metadata["subjects"].append(
+        {
+            "id": "empty",
+            "title": "Empty Subject",
+            "title_source": "Empty Subject",
+            "questionnaires": [],
+            "exam_dates": ["2027-02-02"],
+        }
+    )
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    response = await client.get("/api/exam-packs")
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": "sample-pack",
+            "title": "Sample Pack",
+            "exam": "Sample Exam",
+            "source_lang": "he",
+            "ui_lang": "en",
+            "subjects": [
                 {
-                    "code": "001",
-                    "title": "Basics",
-                    "minutes": 60,
-                    "topic_weights": {"functions": 0.75, "graphs": 0.25},
-                }
-            ],
-            "topics": [
-                {
-                    "id": "functions",
-                    "title": "Functions",
-                    "title_source": "פונקציות",
-                    "weight": 0.75,
-                    "objectives": ["Define a function"],
+                    "id": "math",
+                    "title": "Math",
+                    "title_source": "מתמטיקה",
+                    "progress": {"done": 0, "total": 2},
+                    "exam_date": "2027-02-03",
                 },
                 {
-                    "id": "graphs",
-                    "title": "Graphs",
-                    "title_source": "גרפים",
-                    "weight": 0.25,
-                    "objectives": ["Read a graph"],
+                    "id": "empty",
+                    "title": "Empty Subject",
+                    "title_source": "Empty Subject",
+                    "progress": {"done": 0, "total": 0},
+                    "exam_date": None,
                 },
             ],
         }
+    ]
 
-        glossary_url = "/exam-packs/sample-pack/glossary"
-        response = client.get(glossary_url)
-        assert response.status_code == 200
-        glossary = [
+    response = await client.get("/api/exam-packs/sample-pack/subjects/math")
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "math",
+        "title": "Math",
+        "source_lang": "he",
+        "ui_lang": "en",
+        "questionnaires": [
             {
-                "term_source": "פונקציה",
-                "term_ui": "Function",
-                "note": "A rule, with one output per input",
-                "topic_ids": ["functions", "graphs"],
+                "code": "001",
+                "title": "Basics",
+                "minutes": 60,
+                "topic_weights": {"functions": 0.75, "graphs": 0.25},
+            }
+        ],
+        "topics": [
+            {
+                "id": "functions",
+                "title": "Functions",
+                "title_source": "פונקציות",
+                "weight": 0.75,
+                "objectives": ["Define a function"],
+                "status": "new",
             },
-            {"term_source": "גרף", "term_ui": "Graph", "note": "", "topic_ids": ["graphs"]},
+            {
+                "id": "graphs",
+                "title": "Graphs",
+                "title_source": "גרפים",
+                "weight": 0.25,
+                "objectives": ["Read a graph"],
+                "status": "new",
+            },
+        ],
+    }
+
+    glossary_url = "/api/exam-packs/sample-pack/glossary"
+    response = await client.get(glossary_url)
+    assert response.status_code == 200
+    glossary = [
+        {
+            "term_source": "פונקציה",
+            "term_ui": "Function",
+            "note": "A rule, with one output per input",
+            "topic_ids": ["functions", "graphs"],
+        },
+        {"term_source": "גרף", "term_ui": "Graph", "note": "", "topic_ids": ["graphs"]},
+    ]
+    assert response.json() == glossary
+    response = await client.get(glossary_url, params={"q": "Draw a גרף."})
+    assert response.status_code == 200
+    assert response.json() == [glossary[1]]
+
+    assert (await client.get("/api/exam-packs/missing/glossary")).status_code == 404
+    assert (await client.get("/api/exam-packs/sample-pack/subjects/missing")).status_code == 404
+
+    metadata["title"] = "Updated Sample Pack"
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Sample Pack"
+
+    response = await client.post("/api/exam-packs/reload")
+    assert response.status_code == 200
+    assert response.json() == {"count": 1}
+    assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Updated Sample Pack"
+
+
+async def test_exam_pack_list_skips_duplicate_ids(
+    pack_path: Path, client: AsyncClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    duplicate = pack_path.with_name("sample-pack-duplicate")
+    other = pack_path.with_name("sample-pack-other")
+    copytree(pack_path, duplicate)
+    copytree(pack_path, other)
+    metadata = json.loads((pack_path / "pack.json").read_text(encoding="utf-8"))
+    (duplicate / "pack.json").write_text(
+        json.dumps({**metadata, "title": "Duplicate Pack"}), encoding="utf-8"
+    )
+    (other / "pack.json").write_text(
+        json.dumps({**metadata, "id": "other-pack", "title": "Other Pack"}), encoding="utf-8"
+    )
+
+    response = await client.get("/api/exam-packs")
+    assert response.status_code == 200
+    assert [(pack["id"], pack["title"]) for pack in response.json()] == [
+        ("sample-pack", "Sample Pack"),
+        ("other-pack", "Other Pack"),
+    ]
+    assert "Skipping broken exam pack sample-pack-duplicate" in caplog.text
+
+
+async def test_reload_rejects_duplicate_topic_ids_within_a_subject(
+    client: AsyncClient, pack_path: Path
+) -> None:
+    assert (await client.get(SUBJECT_URL)).status_code == 200
+
+    functions = pack_path / "topics" / "math" / "functions.md"
+    functions.with_name("functions-copy.md").write_text(
+        functions.read_text(encoding="utf-8").replace("title: Functions", "title: Another lesson"),
+        encoding="utf-8",
+    )
+
+    response = await client.post("/api/exam-packs/reload")
+    assert response.status_code == 200
+    assert response.json() == {"count": 0}
+    assert (await client.get(SUBJECT_URL)).status_code == 404
+
+
+async def test_teach_back_updates_only_the_submitted_pack_topic(
+    client: AsyncClient,
+    pack_path: Path,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    other = pack_path.with_name("another-pack-folder")
+    copytree(pack_path, other)
+    metadata_path = other / "pack.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["id"] = "other-pack"
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    other_subject = SUBJECT_URL.replace("sample-pack", "other-pack")
+    functions = pack_path / "topics" / "math" / "functions.md"
+    functions.write_text(
+        functions.read_text(encoding="utf-8").replace(
+            "  - Define a function", "  - Define a function\n  - Identify its domain"
+        ),
+        encoding="utf-8",
+    )
+
+    grades = iter(
+        [
+            {"verdict": "not yet", "missing": [1, 0], "feedback": "Explain how the rule works."},
+            {"verdict": "partly", "missing": [1], "feedback": "Describe which inputs are allowed."},
+            {"verdict": "got it", "missing": [], "feedback": "You explained the rule clearly."},
         ]
-        assert response.json() == glossary
-        response = client.get(glossary_url, params={"q": "Draw a גרף."})
+    )
+
+    async def complete(prompt: str, **kwargs) -> str:
+        assert json.loads(prompt) == {
+            "topic": "Functions",
+            "objectives": ["Define a function", "Identify its domain"],
+            "source_lang": "he",
+            "ui_lang": "en",
+            "learner_text": ANSWER,
+        }
+        return json.dumps(next(grades))
+
+    monkeypatch.setattr(teachback, "complete", complete)
+
+    metadata_path = pack_path / "pack.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["subjects"].append(
+        {
+            "id": "applied-math",
+            "title": "Applied Math",
+            "title_source": "Applied Math",
+            "questionnaires": metadata["subjects"][0]["questionnaires"],
+        }
+    )
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    applied_math = pack_path / "topics" / "applied-math"
+    applied_math.mkdir()
+    (applied_math / "functions.md").write_bytes(functions.read_bytes())
+
+    broken = pack_path.with_name("broken-pack")
+    copytree(pack_path, broken)
+    metadata["id"] = "broken-pack"
+    (broken / "pack.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (broken / "topics" / "applied-math" / "functions-copy.md").write_bytes(functions.read_bytes())
+
+    async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
+        response = await client.get("/api/exam-packs")
         assert response.status_code == 200
-        assert response.json() == [glossary[1]]
+        return {
+            (pack["id"], subject["id"]): subject["progress"]
+            for pack in response.json()
+            for subject in pack["subjects"]
+        }
 
-        assert client.get("/exam-packs/missing/glossary").status_code == 404
-        assert client.get("/exam-packs/sample-pack/subjects/missing").status_code == 404
-
-        metadata_path = pack_path / "pack.json"
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        metadata["title"] = "Updated Sample Pack"
-        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
-        assert client.get("/exam-packs").json()[0]["title"] == "Sample Pack"
-
-        response = client.post("/exam-packs/reload")
+    initial_progress = {
+        ("sample-pack", "math"): {"done": 0, "total": 2},
+        ("sample-pack", "applied-math"): {"done": 0, "total": 1},
+        ("other-pack", "math"): {"done": 0, "total": 2},
+    }
+    assert await list_progress() == initial_progress
+    assert "Skipping broken exam pack broken-pack (ValueError)" in caplog.messages
+    accepted = []
+    for verdict, status, missing in (
+        ("not yet", "learning", ["Define a function", "Identify its domain"]),
+        ("partly", "review", ["Identify its domain"]),
+        ("got it", "done", []),
+    ):
+        response = await client.post(
+            f"{FUNCTIONS_URL}/teach-back", json={"learner_text": f" {ANSWER}\n"}
+        )
         assert response.status_code == 200
-        assert response.json() == {"count": 1}
-        assert client.get("/exam-packs").json()[0]["title"] == "Updated Sample Pack"
+        result = response.json()
+        assert set(result) == {"verdict", "missing", "feedback"}
+        assert result["verdict"] == verdict
+        assert result["missing"] == missing
+        assert ANSWER not in response.text
+        accepted.append(result)
+
+        subject = await client.get(SUBJECT_URL)
+        assert [topic["status"] for topic in subject.json()["topics"]] == [status, "new"]
+        assert (await client.get(other_subject)).json()["topics"][0]["status"] == "new"
+        assert await list_progress() == {
+            **initial_progress,
+            ("sample-pack", "math"): {"done": int(status == "done"), "total": 2},
+        }
+
+    (history,) = state_dir.glob("*.jsonl")
+    contents = history.read_text(encoding="utf-8")
+    assert ANSWER not in contents
+    entries = [json.loads(line) for line in contents.splitlines()]
+    for entry, result in zip(entries, accepted, strict=True):
+        assert entry.pop("at")
+        assert entry == {
+            "pack_id": "sample-pack",
+            "subject_id": "math",
+            "topic_id": "functions",
+            **result,
+        }
+
+    async def other_grade(*args, **kwargs) -> str:
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": "Explain the rule."})
+
+    monkeypatch.setattr(teachback, "complete", other_grade)
+    response = await client.post(
+        f"{other_subject}/topics/functions/teach-back", json={"learner_text": ANSWER}
+    )
+    assert response.status_code == 200
+    assert (await client.get(other_subject)).json()["topics"][0]["status"] == "learning"
+    assert (await client.get(SUBJECT_URL)).json()["topics"][0]["status"] == "done"
+    (other_history,) = set(state_dir.glob("*.jsonl")) - {history}
+    assert json.loads(other_history.read_text(encoding="utf-8"))["pack_id"] == "other-pack"
+    assert history.read_text(encoding="utf-8") == contents
 
 
-def test_exam_pack_manifest_mount_uses_learning_auth(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def test_teach_back_title_fallback_and_concurrent_appends(
+    client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    event_loop_thread = get_ident()
+    load_packs = exam_packs.load_packs
+
+    def load_packs_off_loop():
+        assert get_ident() != event_loop_thread
+        return load_packs()
+
+    monkeypatch.setattr(exam_packs, "load_packs", load_packs_off_loop)
+    graphs = pack_path / "topics" / "math" / "graphs.md"
+    graphs.write_text(
+        graphs.read_text(encoding="utf-8").replace("objectives: [Read a graph]", "objectives: []"),
+        encoding="utf-8",
+    )
+    answers = ["x", "y" * 4000, "Coordinate axes", "A plotted line"]
+    seen = []
+
+    async def complete(prompt: str, **kwargs) -> str:
+        data = json.loads(prompt)
+        assert data["objectives"] == ["Graphs"]
+        seen.append(data["learner_text"])
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": "Describe both axes."})
+
+    monkeypatch.setattr(teachback, "complete", complete)
+    responses = await asyncio.gather(
+        *(
+            client.post(
+                f"{SUBJECT_URL}/topics/graphs/teach-back", json={"learner_text": f" {answer} "}
+            )
+            for answer in answers
+        )
+    )
+    assert sorted(seen) == sorted(answers)
+    for response in responses:
+        assert response.status_code == 200
+        assert response.json()["missing"] == ["Graphs"]
+    (history,) = state_dir.glob("*.jsonl")
+    entries = [json.loads(line) for line in history.read_text(encoding="utf-8").splitlines()]
+    assert [entry["missing"] for entry in entries] == [["Graphs"]] * len(answers)
+
+
+@pytest.mark.parametrize(
+    ("learner_text", "feedback", "expected_status"),
+    [
+        pytest.param("a", "Add a definition and a worked example.", 200, id="ordinary-article"),
+        pytest.param("the", "Explain the rule.", 200, id="three-character-article"),
+        pytest.param("a", 'Explain "a function" in your own words.', 200, id="longer-quote"),
+        pytest.param("a", 'Is "domain" a "set"? Explain why.', 200, id="between-quotes"),
+        pytest.param("a", 'You wrote "a".', 502, id="double-quotes"),
+        pytest.param("a", "You wrote 'a'.", 502, id="single-quotes"),
+        pytest.param("a", "You wrote “a”.", 502, id="curly-double-quotes"),
+        pytest.param("a", "You wrote ‘a’.", 502, id="curly-single-quotes"),
+        pytest.param("a", "You wrote `a`.", 502, id="inline-code"),
+        pytest.param("a", "You wrote «a».", 502, id="guillemets"),
+        pytest.param("a", "You wrote «\u202fa\u202f».", 502, id="spaced-guillemets"),
+        pytest.param("a", "You wrote „a“.", 502, id="low-high-quotes"),
+        pytest.param("כן", "You wrote ״כן״.", 502, id="hebrew-quotes"),
+        pytest.param("a", 'You wrote "a."', 502, id="punctuation-inside-quotes"),
+        pytest.param("a", "a", 502, id="full-echo"),
+        pytest.param("a", "a.", 502, id="punctuated-full-echo"),
+        pytest.param("x=10", "Explain why x=10 follows.", 502, id="four-characters"),
+        pytest.param("f(x)=2x+1", "Explain why f(x)=2x+1 holds.", 502, id="unquoted-formula"),
+        pytest.param("函数只有一个输出", "请解释：函数只有一个输出。", 502, id="unquoted-chinese"),
+    ],
+)
+async def test_teach_back_single_token_feedback(
+    client: AsyncClient,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    learner_text: str,
+    feedback: str,
+    expected_status: int,
+) -> None:
+    async def complete(*args, **kwargs) -> str:
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": feedback})
+
+    monkeypatch.setattr(teachback, "complete", complete)
+    response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": learner_text})
+
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json() == {
+            "verdict": "not yet",
+            "missing": ["Define a function"],
+            "feedback": feedback,
+        }
+    else:
+        assert not state_dir.exists()
+
+
+async def test_teach_back_rejections_leave_state_intact(
+    client: AsyncClient,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    url = f"{FUNCTIONS_URL}/teach-back"
+    payload = {"learner_text": ANSWER}
+
+    async def unconfigured(*args, **kwargs) -> str:
+        raise LLMConfigError(ANSWER)
+
+    monkeypatch.setattr(teachback, "complete", unconfigured)
+    for path in (
+        url.replace("sample-pack", "missing"),
+        url.replace("math", "missing"),
+        url.replace("functions", "missing"),
+    ):
+        assert (await client.post(path, json=payload)).status_code == 404
+    for body in (
+        {},
+        {"learner_text": 123},
+        {"learner_text": "  \n"},
+        {"learner_text": "x" * 4001},
+        [ANSWER],
+    ):
+        response = await client.post(url, json=body)
+        assert response.status_code == 422
+        assert ANSWER not in response.text
+    assert (await client.post(url, content="{")).status_code == 422
+    response = await client.post(url, json=payload)
+    assert response.status_code == 503
+    assert ANSWER not in response.text
+    assert not state_dir.exists()
+
+    grade = {"verdict": "got it", "missing": [], "feedback": "Clear explanation."}
+    raw = json.dumps(grade)
+
+    async def complete(*args, **kwargs) -> str:
+        return raw
+
+    monkeypatch.setattr(teachback, "complete", complete)
+    assert (await client.post(url, json=payload)).status_code == 200
+    saved = {path.name: path.read_bytes() for path in state_dir.iterdir()}
+    for raw in (
+        "incomplete JSON",
+        json.dumps({**grade, "verdict": "unknown"}),
+        json.dumps({**grade, "verdict": "partly", "missing": [1]}),
+        json.dumps({**grade, "verdict": "partly", "missing": ["Define a function"]}),
+        json.dumps({**grade, "missing": [0]}),
+        json.dumps({**grade, "feedback": "  "}),
+        json.dumps({**grade, "feedback": f"You said: {ANSWER}"}),
+    ):
+        response = await client.post(url, json=payload)
+        assert response.status_code == 502
+        assert ANSWER not in response.text
+
+    async def failed_provider(*args, **kwargs) -> str:
+        raise LLMError(ANSWER)
+
+    monkeypatch.setattr(teachback, "complete", failed_provider)
+    response = await client.post(url, json=payload)
+    assert response.status_code == 502
+    assert ANSWER not in response.text
+    assert ANSWER not in caplog.text
+    assert {path.name: path.read_bytes() for path in state_dir.iterdir()} == saved
+    assert (await client.get(SUBJECT_URL)).json()["topics"][0]["status"] == "done"
+
+
+async def test_subject_status_falls_back_to_linked_mastery(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def topic_status() -> str:
+        return (await client.get(SUBJECT_URL)).json()["topics"][0]["status"]
+
+    linked = await client.post(f"{FUNCTIONS_URL}/mastery-link")
+    assert linked.status_code == 200
+    path_id = linked.json()["path_id"]
+    store = LearningStore()
+    progress = store.load(path_id)
+    assert progress is not None
+    (objective,) = progress.modules[0].knowledge_points
+    assert await topic_status() == "new"
+
+    progress.qualitative_mastery[objective.id] = False
+    store.save(progress)
+    assert await topic_status() == "learning"
+
+    progress.qualitative_mastery[objective.id] = True
+    store.save(progress)
+    assert await topic_status() == "done"
+    packs = (await client.get("/api/exam-packs")).json()
+    assert packs[0]["subjects"][0]["progress"] == {"done": 1, "total": 2}
+
+    progress.review_queue = [
+        ReviewTask(
+            id="due-review",
+            knowledge_point_id=objective.id,
+            knowledge_type=objective.type,
+            due_at=0,
+            priority=0,
+            state=RepetitionState(next_review_at=0),
+        )
+    ]
+    store.save(progress)
+    assert await topic_status() == "review"
+    packs = (await client.get("/api/exam-packs")).json()
+    assert packs[0]["subjects"][0]["progress"] == {"done": 0, "total": 2}
+    before = store.load(path_id)
+
+    async def complete(*args, **kwargs) -> str:
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": "Explain the rule."})
+
+    monkeypatch.setattr(teachback, "complete", complete)
+    response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
+    assert response.status_code == 200
+    assert await topic_status() == "learning"
+    assert store.load(path_id) == before
+
+
+async def test_exam_pack_manifest_skips_router_without_mastery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(catalog, "selection", dict)
+    monkeypatch.setattr(catalog, "installed", lambda name: name != "mastery")
+    reference = "deeptutor.api.routers.exam_packs:router"
+    questions = module_routes.manifests()["questions"]
+    exam_pack_routes = [route for route in questions["routes"] if route["reference"] == reference]
+    questions = {**questions, "routes": exam_pack_routes}
+    monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
+    app = FastAPI()
+    loader = RouterLoader(app)
+    module_routes.mount_module_routes(app, loader)
+
+    assert reference not in loader.records
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        assert (await client.get("/api/exam-packs")).status_code == 404
+
+
+async def test_exam_pack_manifest_mount_uses_learning_auth(
+    tmp_path: Path, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("DEEPTUTOR_HOME", str(tmp_path))
+    monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
+    monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
+    # Keep the production exam-pack policy without loading the question engine's runtime settings.
+    exam_pack_routes = [
+        route
+        for route in questions["routes"]
+        if route["reference"] == "deeptutor.api.routers.exam_packs:router"
+    ]
+    questions = {**questions, "routes": exam_pack_routes}
     monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
     app = FastAPI()
     module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
@@ -109,8 +611,61 @@ def test_exam_pack_manifest_mount_uses_learning_auth(
         raise HTTPException(status_code=403)
 
     app.dependency_overrides[require_learning_surface] = deny_learning_access
-    with TestClient(app) as client:
-        assert client.get("/api/exam-packs").status_code == 403
-        assert client.get("/api/exam-packs/sample-pack/subjects/math").status_code == 403
-        assert client.get("/api/exam-packs/sample-pack/glossary").status_code == 403
-        assert client.post("/api/exam-packs/reload").status_code == 403
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://testserver"
+    ) as client:
+        assert (await client.get("/api/exam-packs")).status_code == 403
+        assert (await client.get("/api/exam-packs/sample-pack/subjects/math")).status_code == 403
+        assert (await client.get("/api/exam-packs/sample-pack/glossary")).status_code == 403
+        assert (await client.post("/api/exam-packs/reload")).status_code == 403
+        response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
+        assert response.status_code == 403
+
+        role = "user"
+
+        async def authenticated_user() -> TokenPayload:
+            return TokenPayload(username="test-user", role=role)
+
+        async def complete(*args, **kwargs) -> str:
+            return json.dumps({"verdict": "got it", "missing": [], "feedback": "Clear explanation."})
+
+        del app.dependency_overrides[require_learning_surface]
+        app.dependency_overrides[require_auth] = authenticated_user
+        monkeypatch.setattr(auth, "AUTH_ENABLED", True)
+        policy = {"allowed_surfaces": ["reading"]}
+        monkeypatch.setattr(learning_access, "current_learning_policy", lambda: policy)
+        monkeypatch.setattr(teachback, "complete", complete)
+        assert (await client.get("/api/exam-packs")).status_code == 403
+        assert (await client.get(SUBJECT_URL)).status_code == 403
+        response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
+        assert response.status_code == 403
+        assert not state_dir.exists()
+
+        policy["allowed_surfaces"] = ["chat"]
+        assert (await client.get("/api/exam-packs")).status_code == 200
+        response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
+        assert response.status_code == 200
+        subject = await client.get(SUBJECT_URL)
+        assert subject.status_code == 200
+        assert subject.json()["topics"][0]["status"] == "done"
+
+        metadata_path = pack_path / "pack.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["title"] = "Updated Sample Pack"
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+        reload_url = "/api/exam-packs/reload"
+        response = await client.post(reload_url)
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Admin access required"
+
+        monkeypatch.setattr(learning_access, "current_learning_policy", lambda: None)
+        response = await client.post(reload_url)
+        assert response.status_code == 403
+        assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Sample Pack"
+
+        role = "admin"
+        response = await client.post(reload_url)
+        assert response.status_code == 200
+        assert response.json() == {"count": 1}
+        assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Updated Sample Pack"

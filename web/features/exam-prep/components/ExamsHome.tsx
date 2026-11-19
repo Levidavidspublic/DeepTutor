@@ -10,6 +10,7 @@ import {
   LearningShell,
   LearningSkeleton,
 } from "@/components/learning/LearningShell";
+import { normalizeLanguage } from "@/i18n/languages";
 import { listExamPacks } from "../api";
 import type { ExamPackSummary } from "../types";
 import { ExamPackCard } from "./ExamPackCard";
@@ -20,8 +21,9 @@ type PackList =
   | { status: "ready"; packs: ExamPackSummary[] };
 
 export function ExamsHome() {
-  const { t } = useTranslation("exam");
+  const { i18n, t } = useTranslation("exam");
   const { t: tApp } = useTranslation("app");
+  const locale = normalizeLanguage(i18n.language);
   const [list, setList] = useState<PackList>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
 
@@ -62,7 +64,14 @@ export function ExamsHome() {
           <ul className={pageGridClass(2)} role="list">
             {list.packs.map((pack) => (
               <li key={pack.id}>
-                <ExamPackCard pack={pack} subjectsLabel={t("subjects")} continueLabel={t("continue")} />
+                <ExamPackCard
+                  pack={pack}
+                  locale={locale}
+                  subjectsLabel={t("subjects")}
+                  continueLabel={t("continue")}
+                  progressLabel={t("progress")}
+                  examDateLabel={t("examDate")}
+                />
               </li>
             ))}
           </ul>
