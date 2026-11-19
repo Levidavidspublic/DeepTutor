@@ -1,4 +1,4 @@
-"""API for runtime exam packs and topic progress."""
+"""API for runtime exam packs, Guided Learning links, and topic progress."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def _get_subject(exam_pack: ExamPack, subject_id: str) -> Subject:
 def _get_topic(exam_pack: ExamPack, subject_id: str, topic_id: str) -> Topic:
     _get_subject(exam_pack, subject_id)
     for topic in exam_pack.topics:
-        if topic.subject_id == subject_id and topic.id == topic_id:
+        if topic.id == topic_id and topic.subject_id == subject_id:
             return topic
     raise HTTPException(status_code=404, detail="Exam topic not found")
 
