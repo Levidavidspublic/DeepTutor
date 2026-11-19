@@ -8,8 +8,6 @@ import pytest
 
 from deeptutor.services.calendar.models import EventInput
 
-pytestmark = pytest.mark.skip(reason="KITCHEN-PENDING #185: feature not built yet")
-
 
 def _calendar(*components: str) -> str:
     return "\r\n".join(("BEGIN:VCALENDAR", "VERSION:2.0", *components, "END:VCALENDAR", ""))
