@@ -1,15 +1,16 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 import { I18nextProvider } from "react-i18next";
 import { beforeEach, expect, it, vi } from "vitest";
 import Page from "@/app/(workspace)/learning/exams/page";
-import { listExamPacks } from "@/features/exam-prep/api";
+import { getExamSubject, listExamPacks } from "@/features/exam-prep/api";
 import type { ExamPackSummary } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
 import deApp from "@/locales/de/app.json";
 import deExam from "@/locales/de/exam.json";
 import viExam from "@/locales/vi/exam.json";
 
-vi.mock("@/features/exam-prep/api", () => ({ listExamPacks: vi.fn() }));
+vi.mock("@/features/exam-prep/api", () => ({ getExamSubject: vi.fn(), listExamPacks: vi.fn() }));
 
 const i18n = initI18n("en");
 
@@ -26,6 +27,7 @@ const pack: ExamPackSummary = {
 };
 
 beforeEach(() => {
+  vi.mocked(getExamSubject).mockReset();
   vi.mocked(listExamPacks).mockReset();
 });
 
@@ -72,7 +74,7 @@ it("shows the empty state with a plain next step", async () => {
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
-it("encodes both segments of each subject link and keeps Continue pointed to the first subject", async () => {
+it("encodes both IDs in each subject link and keeps Continue pointed to the first subject", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([pack]);
 
   await act(async () => {
@@ -85,14 +87,50 @@ it("encodes both segments of each subject link and keeps Continue pointed to the
   expect(within(card).getAllByRole("link")).toHaveLength(3);
   const mathLink = within(subjects).getByRole("link", { name: "Continue Math" });
   const scienceLink = within(subjects).getByRole("link", { name: "Continue Science" });
-  expect(mathLink).toHaveAttribute("href", "/learning/exams/demo%20pack/math%231");
-  expect(scienceLink).toHaveAttribute("href", "/learning/exams/demo%20pack/science%2Flab");
+  expect(mathLink).toHaveAttribute("href", "/learning/exams?pack=demo+pack&subject=math%231");
+  expect(scienceLink).toHaveAttribute("href", "/learning/exams?pack=demo+pack&subject=science%2Flab");
   expect(within(mathLink).getByText("Math")).toHaveAttribute("lang", pack.ui_lang);
   expect(within(scienceLink).getByText("Science")).toHaveAttribute("lang", pack.ui_lang);
   expect(within(card).getByRole("link", { name: "Continue" })).toHaveAttribute(
     "href",
-    "/learning/exams/demo%20pack/math%231",
+    "/learning/exams?pack=demo+pack&subject=math%231",
   );
+});
+
+it("shows the linked subject's topics in the selected pack on the Exams page", async () => {
+  const science = { id: "science+review", title: "Science", title_source: "Science" };
+  vi.mocked(listExamPacks).mockResolvedValueOnce([
+    { ...pack, subjects: [pack.subjects[0], science] },
+    { ...pack, id: "another", title: "Another Exam Pack", subjects: [science] },
+  ]);
+  vi.mocked(getExamSubject).mockResolvedValueOnce({
+    id: science.id,
+    title: science.title,
+    questionnaires: [],
+    topics: [{ id: "motion", title: "Motion", title_source: "Motion", objectives: [], weight: 1 }],
+  });
+
+  const pageAt = (searchParams: URLSearchParams) => (
+    <SearchParamsContext.Provider value={searchParams}>
+      <Page />
+    </SearchParamsContext.Provider>
+  );
+  const { rerender } = render(pageAt(new URLSearchParams({ dt_workspace: "study room" })));
+  const card = await screen.findByRole("article", { name: pack.title });
+  const link = within(card).getByRole("link", { name: "Continue Science" }) as HTMLAnchorElement;
+  const destination = new URL(link.href);
+  expect(destination.pathname).toBe("/learning/exams");
+  expect(destination.searchParams.get("dt_workspace")).toBe("study room");
+  expect(getExamSubject).not.toHaveBeenCalled();
+
+  rerender(pageAt(destination.searchParams));
+
+  const subject = await within(card).findByRole("region", { name: science.title });
+  expect(await within(subject).findByText("Motion")).toBeVisible();
+  expect(link).toHaveAttribute("aria-current", "true");
+  expect(getExamSubject).toHaveBeenCalledExactlyOnceWith(pack.id, science.id);
+  const otherPack = screen.getByRole("article", { name: "Another Exam Pack" });
+  expect(within(otherPack).queryByRole("region", { name: science.title })).not.toBeInTheDocument();
 });
 
 it("uses German copy for the heading, empty state, and subject navigation when the resource is loaded", async () => {
