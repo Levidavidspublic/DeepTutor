@@ -70,7 +70,7 @@ it("shows the empty state with a plain next step", async () => {
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
-it("gives each subject a named Continue link with both path segments encoded", async () => {
+it("lists subjects with their pack language and no links to unavailable subject pages", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([pack]);
 
   await act(async () => {
@@ -78,16 +78,17 @@ it("gives each subject a named Continue link with both path segments encoded", a
   });
 
   const card = screen.getByRole("article", { name: "Demo Exam Pack" });
-  expect(within(card).getAllByRole("link")).toHaveLength(2);
-  const mathLink = within(card).getByRole("link", { name: "Continue Math" });
-  const scienceLink = within(card).getByRole("link", { name: "Continue Science" });
-  expect(mathLink).toHaveAttribute("href", "/learning/exams/demo%20pack/math%231");
-  expect(scienceLink).toHaveAttribute("href", "/learning/exams/demo%20pack/science%2Flab");
-  expect(within(mathLink).getByText("Math")).toHaveAttribute("lang", pack.ui_lang);
-  expect(within(scienceLink).getByText("Science")).toHaveAttribute("lang", pack.ui_lang);
+  const subjects = within(card).getByRole("list", { name: "Subjects" });
+  expect(within(subjects).getAllByRole("listitem")).toHaveLength(2);
+  expect(within(subjects).queryAllByRole("link")).toHaveLength(0);
+  for (const { title } of pack.subjects) {
+    const subject = within(subjects).getByText(title);
+    expect(subject).toBeVisible();
+    expect(subject).toHaveAttribute("lang", pack.ui_lang);
+  }
 });
 
-it("uses German copy for the heading, empty state, and subject navigation when the resource is loaded", async () => {
+it("uses German copy for the heading, empty state, and subject list when the resource is loaded", async () => {
   const germanI18n = i18n.cloneInstance({ lng: "de", forkResourceStore: true });
   germanI18n.addResourceBundle("de", "exam", deExam);
   const page = (
@@ -107,8 +108,8 @@ it("uses German copy for the heading, empty state, and subject navigation when t
   const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
   const subjects = within(card).getByRole("list", { name: "Fächer" });
   expect(within(card).getByText("Fächer")).toBeVisible();
-  expect(within(subjects).getByRole("link", { name: "Weiter mit Math" })).toBeVisible();
-  expect(within(subjects).getByRole("link", { name: "Weiter mit Science" })).toBeVisible();
+  expect(within(subjects).getByText("Math")).toBeVisible();
+  expect(within(subjects).getByText("Science")).toBeVisible();
 });
 
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {
