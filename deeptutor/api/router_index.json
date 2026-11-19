@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "fingerprint": "b30305838c249ccc815032ce5d01607f4dc3198455e07517f8b3c92cbdd0a91e",
-=======
-  "fingerprint": "25912119636c474b2e90d14980d2e713689c03612246fa0b8ed4f1c75ff8546a",
->>>>>>> origin/ticket/34-p2-06
+  "fingerprint": "44c99ac86b968667412443f79d7dab1154d68d279faaff81417a8386caf4fb2f",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3548,7 +3544,6 @@
         ]
       },
       {
-<<<<<<< HEAD
         "path": "/{pack}/subjects/{subject}/topics/{topic}/teach-back",
         "name": "submit_teach_back",
         "kind": "http",
@@ -3557,10 +3552,24 @@
         ]
       },
       {
-=======
->>>>>>> origin/ticket/34-p2-06
         "path": "/{pack}/glossary",
         "name": "get_exam_glossary",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/mock",
+        "name": "start_mock",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/mock/{attempt_id}",
+        "name": "get_mock_attempt",
         "kind": "http",
         "methods": [
           "GET"

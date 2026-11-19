@@ -43,7 +43,12 @@ async def client(pack_path, attempts_dir, pipeline_run, monkeypatch):
     metadata_path = pack_path / "pack.json"
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     original = metadata["subjects"][0]["questionnaires"][0]
-    metadata["subjects"][0]["questionnaires"].append({**original, "code": "003", "minutes": 0})
+    metadata["subjects"][0]["questionnaires"].extend(
+        [
+            {**original, "code": "003", "minutes": 0},
+            {**original, "code": "004", "minutes": 10**12},
+        ]
+    )
     other = {**original, "minutes": 20}
     metadata["subjects"].insert(
         0,
@@ -172,6 +177,8 @@ async def test_missing_and_invalid_mock_input_never_calls_the_tutor(
         (START_URL, {**START_BODY, "subject_id": "missing"}, 404),
         (START_URL, {**START_BODY, "questionnaire_code": "002"}, 404),
         (START_URL, {**START_BODY, "questionnaire_code": "003"}, 422),
+        (START_URL, {**START_BODY, "questionnaire_code": "004"}, 422),
+        (START_URL, {**START_BODY, "subject_id": "science"}, 422),
         (START_URL, {"subject_id": "math"}, 422),
     ]
     for url, body, status in cases:
