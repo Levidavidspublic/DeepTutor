@@ -51,6 +51,9 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
   const answerId = useId();
   const [draft, setDraft] = useState("");
   const [submission, setSubmission] = useState<Submission>({ status: "editing" });
+  const [requestingMicrophone, setRequestingMicrophone] = useState(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
+  const microphoneRequest = useRef(false);
   const submitInFlight = useRef(false);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   const answerField = useRef<HTMLTextAreaElement>(null);
@@ -64,8 +67,9 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
   const submitting = submission.status === "submitting";
   const recording = recorder.state === "recording";
   const transcribing = recorder.state === "transcribing";
+  const microphoneBusy = requestingMicrophone || transcribing;
   const answer = draft.trim();
-  const canSubmit = Boolean(answer) && recorder.state === "idle" && submission.status === "editing";
+  const canSubmit = Boolean(answer) && !requestingMicrophone && recorder.state === "idle" && submission.status === "editing";
   const prompt = t("Explain this clearly in your own words");
   const verdict = result ? t(verdictLabels[result.verdict]) : null;
 
@@ -78,9 +82,25 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
     }
   }, [result]);
 
+  async function startRecording() {
+    if (microphoneRequest.current || submitInFlight.current) return;
+
+    microphoneRequest.current = true;
+    setRequestingMicrophone(true);
+    setRecordingError(null);
+    try {
+      await recorder.start();
+    } catch {
+      setRecordingError(t("Something went wrong."));
+    } finally {
+      microphoneRequest.current = false;
+      setRequestingMicrophone(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!canSubmit || submitInFlight.current) return;
+    if (!canSubmit || microphoneRequest.current || submitInFlight.current) return;
 
     submitInFlight.current = true;
     setSubmission({ status: "submitting" });
@@ -171,7 +191,7 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
               </>
             } />
           )}
-          {recorder.error && <LearningErrorState message={recorder.error} />}
+          {(recordingError || recorder.error) && <LearningErrorState message={recordingError || recorder.error} />}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={!canSubmit} loading={submitting}>
               {submitting ? t("Checking…") : t("Check answer")}
@@ -179,11 +199,11 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
             <Button
               variant="secondary"
               disabled={submitting}
-              loading={transcribing}
+              loading={microphoneBusy}
               icon={recording ? <Square size={16} aria-hidden /> : <Mic size={16} aria-hidden />}
-              onClick={recorder.toggle}
+              onClick={recording ? recorder.stop : startRecording}
             >
-              {transcribing ? t("Processing…") : recording ? t("Stop recording") : t("Record voice")}
+              {microphoneBusy ? t("Processing…") : recording ? t("Stop recording") : t("Record voice")}
             </Button>
           </div>
         </form>
