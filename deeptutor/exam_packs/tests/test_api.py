@@ -182,7 +182,11 @@ async def test_exam_pack_routes(
 
 
 async def test_teach_back_updates_only_the_submitted_pack_topic(
-    client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient,
+    pack_path: Path,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     other = pack_path.with_name("another-pack-folder")
     copytree(pack_path, other)
@@ -233,7 +237,12 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
     applied_math = pack_path / "topics" / "applied-math"
     applied_math.mkdir()
     (applied_math / "functions.md").write_bytes(functions.read_bytes())
-    (applied_math / "functions-copy.md").write_bytes(functions.read_bytes())
+
+    broken = pack_path.with_name("broken-pack")
+    copytree(pack_path, broken)
+    metadata["id"] = "broken-pack"
+    (broken / "pack.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (broken / "topics" / "applied-math" / "functions-copy.md").write_bytes(functions.read_bytes())
 
     async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
         response = await client.get("/api/exam-packs")
@@ -250,6 +259,7 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
         ("other-pack", "math"): {"done": 0, "total": 2},
     }
     assert await list_progress() == initial_progress
+    assert "Skipping broken exam pack broken-pack (ValueError)" in caplog.messages
     accepted = []
     for verdict, status, missing in (
         ("not yet", "learning", ["Define a function", "Identify its domain"]),
