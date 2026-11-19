@@ -1,4 +1,4 @@
-"""API for runtime exam packs and topic progress."""
+"""API for runtime exam packs, Guided Learning links, and learner state."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from deeptutor.exam_packs.decks import (
     Deck,
     DeckKind,
     DeckSummary,
-    import_deck,
     InvalidDeckInput,
+    import_deck,
     list_decks,
     load_deck,
     save_deck,
