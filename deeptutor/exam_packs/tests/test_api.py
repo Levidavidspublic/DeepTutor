@@ -346,6 +346,42 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
     assert [entry["missing"] for entry in entries] == [["Graphs"]] * len(answers)
 
 
+@pytest.mark.parametrize(
+    ("feedback", "expected_status"),
+    [
+        pytest.param("Add a definition and a worked example.", 200, id="ordinary-article"),
+        pytest.param('You wrote "a".', 502, id="double-quotes"),
+        pytest.param("You wrote 'a'.", 502, id="single-quotes"),
+        pytest.param("You wrote “a”.", 502, id="curly-double-quotes"),
+        pytest.param("You wrote ‘a’.", 502, id="curly-single-quotes"),
+        pytest.param("You wrote `a`.", 502, id="inline-code"),
+        pytest.param("a", 502, id="full-echo"),
+    ],
+)
+async def test_teach_back_single_token_feedback(
+    client: AsyncClient,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    feedback: str,
+    expected_status: int,
+) -> None:
+    async def complete(*args, **kwargs) -> str:
+        return json.dumps({"verdict": "not yet", "missing": [0], "feedback": feedback})
+
+    monkeypatch.setattr(teachback, "complete", complete)
+    response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": "a"})
+
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json() == {
+            "verdict": "not yet",
+            "missing": ["Define a function"],
+            "feedback": feedback,
+        }
+    else:
+        assert not state_dir.exists()
+
+
 async def test_teach_back_rejections_leave_state_intact(
     client: AsyncClient,
     state_dir: Path,

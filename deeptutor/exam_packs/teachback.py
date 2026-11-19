@@ -59,6 +59,17 @@ class TeachBackResult(BaseModel):
     feedback: str
 
 
+def _repeats_learner_answer(learner_text: str, feedback: str) -> bool:
+    if len(learner_text.split(maxsplit=1)) > 1:
+        return re.search(rf"(?<!\w){re.escape(learner_text)}(?!\w)", feedback) is not None
+
+    # Single tokens can occur naturally in feedback. Require a direct quote or a full echo.
+    return feedback == learner_text or any(
+        f"{opening}{learner_text}{closing}" in feedback
+        for opening, closing in (('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’"), ("`", "`"))
+    )
+
+
 async def grade_answer(pack: ExamPack, topic: Topic, learner_text: str) -> TeachBackResult:
     objectives = topic.objectives or [topic.title]
     prompt = json.dumps(
@@ -84,7 +95,7 @@ async def grade_answer(pack: ExamPack, topic: Topic, learner_text: str) -> Teach
         len(missing) != len(grade.missing)
         or missing.difference(range(len(objectives)))
         or (grade.verdict == "got it") != (not missing)
-        or re.search(rf"(?<!\w){re.escape(learner_text)}(?!\w)", grade.feedback)
+        or _repeats_learner_answer(learner_text, grade.feedback)
     ):
         raise InvalidGrade
     return TeachBackResult(
