@@ -40,7 +40,8 @@ _QUOTED_ANSWER_PATTERNS = (
     "`(?:({answer})|[^`]*)`",
     "«({answer})»",
     "„({answer})“",
-    "״(?:({answer})|[^״]*)״",
+    # Leave a joined quotation of the answer available to the next match.
+    r"״(?:({answer})|(?:[^״]|(?<=\w)״(?=\w)(?!\w+״{answer}״))*)״",
 )
 
 _GRADING_PROMPT = """Assess the learner's explanation against the listed objectives.
