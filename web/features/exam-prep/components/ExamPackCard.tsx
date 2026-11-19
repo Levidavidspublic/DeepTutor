@@ -1,5 +1,6 @@
 import { useId } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { pageActionClass } from "@/components/layout/FeaturePage";
 import { ProgressRing } from "@/components/space/learning/ProgressRing";
 import type { ExamPackSummary } from "../types";
@@ -19,12 +20,14 @@ export function ExamPackCard({
   progressLabel: string;
   examDateLabel: string;
 }) {
+  const { t } = useTranslation("app");
   const titleId = useId();
   const packPath = `/learning/exams/${encodeURIComponent(pack.id)}`;
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeZone: "UTC",
   });
+  const firstSubject = pack.subjects[0];
 
   return (
     <article className="flex h-full flex-col gap-4 rounded-xl bg-muted/45 p-4" aria-labelledby={titleId}>
@@ -81,6 +84,15 @@ export function ExamPackCard({
             })}
           </ul>
         </div>
+      )}
+      {firstSubject && (
+        <Link
+          href={`${packPath}/${encodeURIComponent(firstSubject.id)}`}
+          aria-describedby={titleId}
+          className={`${pageActionClass()} mt-auto self-start`}
+        >
+          {t("Continue")}
+        </Link>
       )}
     </article>
   );
