@@ -42,7 +42,7 @@ function expectMaterialsDestination(
   expect(destination.hash).toBe("");
 }
 
-describe.skip("S3 Materials link KITCHEN-PENDING #68", () => {
+describe.skip("S3 Materials link KITCHEN-PENDING #68 (KITCHEN-PENDING #216)", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("en");
   });
