@@ -14,7 +14,8 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 ## Upstream files the fork is allowed to touch
 | File | Change |
 |---|---|
-| `deeptutor/api/router_loader.py` | one line: register `routers/exam_packs.py` |
+| `deeptutor/modules/manifests/questions.json` | Registers `deeptutor.api.routers.exam_packs:router` |
+| `deeptutor/api/router_index.json` | Regenerate with `python scripts/build_router_index.py` |
 | `pyproject.toml` | one entry in pytest `testpaths` |
 | `web/components/learning/LearningDashboard.tsx` | Workspace-scoped Exams link next to the modern Learning filters |
 | `web/features/ui-layout/classic/ClassicLearningDashboard.tsx` | Workspace-scoped Exams link alongside the classic Learning choices |
