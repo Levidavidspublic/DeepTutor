@@ -12,13 +12,14 @@ import pytest_asyncio
 
 from deeptutor.api import module_routes
 from deeptutor.api.router_loader import RouterLoader
-from deeptutor.api.routers import exam_packs
+from deeptutor.api.routers import auth, exam_packs
 from deeptutor.api.routers.auth import require_auth, require_learning_surface
 from deeptutor.exam_packs import teachback
 from deeptutor.learning.models import RepetitionState, ReviewTask
 from deeptutor.learning.storage import LearningStore
 from deeptutor.modules import catalog
 from deeptutor.multi_user import learning_access
+from deeptutor.services.auth import TokenPayload
 from deeptutor.services.llm import LLMConfigError, LLMError
 from deeptutor.services.path_service import PathService
 
@@ -224,7 +225,11 @@ async def test_reload_rejects_duplicate_topic_ids_within_a_subject(
 
 
 async def test_teach_back_updates_only_the_submitted_pack_topic(
-    client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient,
+    pack_path: Path,
+    state_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     other = pack_path.with_name("another-pack-folder")
     copytree(pack_path, other)
@@ -276,6 +281,12 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
     applied_math.mkdir()
     (applied_math / "functions.md").write_bytes(functions.read_bytes())
 
+    broken = pack_path.with_name("broken-pack")
+    copytree(pack_path, broken)
+    metadata["id"] = "broken-pack"
+    (broken / "pack.json").write_text(json.dumps(metadata), encoding="utf-8")
+    (broken / "topics" / "applied-math" / "functions-copy.md").write_bytes(functions.read_bytes())
+
     async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
         response = await client.get("/api/exam-packs")
         assert response.status_code == 200
@@ -291,6 +302,7 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
         ("other-pack", "math"): {"done": 0, "total": 2},
     }
     assert await list_progress() == initial_progress
+    assert "Skipping broken exam pack broken-pack (ValueError)" in caplog.messages
     accepted = []
     for verdict, status, missing in (
         ("not yet", "learning", ["Define a function", "Identify its domain"]),
@@ -394,15 +406,33 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
         pytest.param("the", "Explain the rule.", 200, id="three-character-article"),
         pytest.param("a", 'Explain "a function" in your own words.', 200, id="longer-quote"),
         pytest.param("a", 'Is "domain" a "set"? Explain why.', 200, id="between-quotes"),
+        pytest.param("a", 'Is "domain " a " set"? Explain why.', 200, id="between-padded-quotes"),
+        pytest.param("a", "Is 'it's helpful' a 'claim'?", 200, id="quoted-contraction"),
         pytest.param("a", 'You wrote "a".', 502, id="double-quotes"),
+        pytest.param("a", 'You wrote " a ".', 502, id="spaced-double-quotes"),
         pytest.param("a", "You wrote 'a'.", 502, id="single-quotes"),
+        pytest.param("a", "That's what you wrote, ' a '.", 502, id="spaced-single-quotes"),
         pytest.param("a", "You wrote “a”.", 502, id="curly-double-quotes"),
+        pytest.param("a", "You wrote “ a ”.", 502, id="spaced-curly-double-quotes"),
         pytest.param("a", "You wrote ‘a’.", 502, id="curly-single-quotes"),
+        pytest.param("a", "You wrote ‘ a ’.", 502, id="spaced-curly-single-quotes"),
         pytest.param("a", "You wrote `a`.", 502, id="inline-code"),
+        pytest.param("a", "You wrote ` a `.", 502, id="spaced-inline-code"),
         pytest.param("a", "You wrote «a».", 502, id="guillemets"),
         pytest.param("a", "You wrote «\u202fa\u202f».", 502, id="spaced-guillemets"),
         pytest.param("a", "You wrote „a“.", 502, id="low-high-quotes"),
+        pytest.param("a", "You wrote „ a “.", 502, id="spaced-low-high-quotes"),
         pytest.param("כן", "You wrote ״כן״.", 502, id="hebrew-quotes"),
+        pytest.param("כן", "You wrote ״ כן ״.", 502, id="spaced-hebrew-quotes"),
+        pytest.param(
+            "כן", "בדוק את ״צה״ל״ ואז הסבר את ״כן״.", 502, id="quoted-hebrew-acronym-before-answer"
+        ),
+        pytest.param("כן", "אמרת ש״כן״ היא התשובה.", 502, id="prefixed-hebrew-quote"),
+        pytest.param("כן", "הסבר את ״כן״ו״לא״.", 502, id="first-joined-hebrew-quote"),
+        pytest.param("לא", "הסבר את ״כן״ו״לא״.", 502, id="second-joined-hebrew-quote"),
+        pytest.param(
+            "כן", "הסבר את ״צה״ל״ו״ כן ״.", 502, id="joined-hebrew-acronym-before-answer"
+        ),
         pytest.param("a", 'You wrote "a."', 502, id="punctuation-inside-quotes"),
         pytest.param("a", "a", 502, id="full-echo"),
         pytest.param("a", "a.", 502, id="punctuated-full-echo"),
@@ -584,6 +614,13 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
+    # Keep the production exam-pack policy without loading the question engine's runtime settings.
+    exam_pack_routes = [
+        route
+        for route in questions["routes"]
+        if route["reference"] == "deeptutor.api.routers.exam_packs:router"
+    ]
+    questions = {**questions, "routes": exam_pack_routes}
     monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
     app = FastAPI()
     module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
@@ -602,14 +639,17 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
         response = await client.post(f"{FUNCTIONS_URL}/teach-back", json={"learner_text": ANSWER})
         assert response.status_code == 403
 
-        async def authenticated_learner() -> None:
-            pass
+        role = "user"
+
+        async def authenticated_user() -> TokenPayload:
+            return TokenPayload(username="test-user", role=role)
 
         async def complete(*args, **kwargs) -> str:
             return json.dumps({"verdict": "got it", "missing": [], "feedback": "Clear explanation."})
 
         del app.dependency_overrides[require_learning_surface]
-        app.dependency_overrides[require_auth] = authenticated_learner
+        app.dependency_overrides[require_auth] = authenticated_user
+        monkeypatch.setattr(auth, "AUTH_ENABLED", True)
         policy = {"allowed_surfaces": ["reading"]}
         monkeypatch.setattr(learning_access, "current_learning_policy", lambda: policy)
         monkeypatch.setattr(teachback, "complete", complete)
@@ -626,3 +666,24 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
         subject = await client.get(SUBJECT_URL)
         assert subject.status_code == 200
         assert subject.json()["topics"][0]["status"] == "done"
+
+        metadata_path = pack_path / "pack.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["title"] = "Updated Sample Pack"
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+        reload_url = "/api/exam-packs/reload"
+        response = await client.post(reload_url)
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Admin access required"
+
+        monkeypatch.setattr(learning_access, "current_learning_policy", lambda: None)
+        response = await client.post(reload_url)
+        assert response.status_code == 403
+        assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Sample Pack"
+
+        role = "admin"
+        response = await client.post(reload_url)
+        assert response.status_code == 200
+        assert response.json() == {"count": 1}
+        assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Updated Sample Pack"

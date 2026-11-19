@@ -102,6 +102,8 @@ pipeline = QuestionPipeline.__new__(QuestionPipeline)
 pipeline.kb_name = None
 asyncio.run(pipeline._prepare_pageindex_tools())
 assert pipeline._pageindex_tool_context is None
+from deeptutor.api.main import app
+assert "get" in app.openapi()["paths"]["/api/exam-packs"]
 """,
     "calendar": """
 from datetime import datetime, timezone, timedelta
