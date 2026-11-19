@@ -1,5 +1,5 @@
 {
-  "fingerprint": "c3b938e1a6af4378a012f1f6faa1887d8c8d2b37042f8f01885deabebeef625a",
+  "fingerprint": "96cd7d2790940a64c664ff0f031c188790db5d6374ecf40e1edb5c1bfac881cc",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3512,6 +3512,40 @@
       {
         "path": "/import/commit",
         "name": "import_commit",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      }
+    ],
+    "deeptutor.api.routers.exam_packs:router": [
+      {
+        "path": "",
+        "name": "list_exam_packs",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/subjects/{subject}",
+        "name": "get_exam_subject",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/glossary",
+        "name": "get_exam_glossary",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/reload",
+        "name": "reload_exam_packs",
         "kind": "http",
         "methods": [
           "POST"
