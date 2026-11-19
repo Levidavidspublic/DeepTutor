@@ -92,6 +92,12 @@ it("shows each subject's progress and any upcoming exam date", async () => {
       subjects: [
         { ...pack.subjects[0], progress: { done: 1, total: 4 }, exam_date: "2030-11-18" },
         { ...pack.subjects[1], progress: { done: 3, total: 4 }, exam_date: null },
+        {
+          id: "history",
+          title: "History",
+          title_source: "History",
+          progress: { done: 0, total: 2 },
+        },
       ],
     },
   ]);
@@ -101,13 +107,25 @@ it("shows each subject's progress and any upcoming exam date", async () => {
   });
 
   const card = screen.getByRole("article", { name: "Demo Exam Pack" });
-  const [math, science] = within(card).getAllByRole("listitem");
-  const mathProgress = within(math).getByRole("progressbar", { name: "Progress" });
-  const scienceProgress = within(science).getByRole("progressbar", { name: "Progress" });
+  const [math, science, history] = within(card).getAllByRole("listitem");
+  const mathProgress = within(math).getByRole("progressbar", {
+    name: "Progress",
+    value: { min: 0, max: 4, now: 1 },
+  });
+  const scienceProgress = within(science).getByRole("progressbar", {
+    name: "Progress",
+    value: { min: 0, max: 4, now: 3 },
+  });
+  const historyProgress = within(history).getByRole("progressbar", {
+    name: "Progress",
+    value: { min: 0, max: 2, now: 0 },
+  });
   expect(mathProgress).toHaveTextContent("25%");
   expect(mathProgress).toHaveAttribute("aria-valuetext", "1 / 4");
   expect(scienceProgress).toHaveTextContent("75%");
   expect(scienceProgress).toHaveAttribute("aria-valuetext", "3 / 4");
+  expect(historyProgress).toHaveTextContent("0%");
+  expect(historyProgress).toHaveAttribute("aria-valuetext", "0 / 2");
   expect(within(math).getByText("Exam date")).toBeVisible();
   expect(within(math).getByText("Nov 18, 2030")).toHaveAttribute("datetime", "2030-11-18");
   expect(within(science).queryByText("Exam date")).not.toBeInTheDocument();
