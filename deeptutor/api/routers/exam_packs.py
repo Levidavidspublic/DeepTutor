@@ -1,4 +1,4 @@
-"""Read-only API for runtime exam packs."""
+"""API for runtime exam packs and their Guided Learning links."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ from threading import Lock
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, load_packs
+from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, Subject, load_packs
 from deeptutor.exam_packs.glossary import find_terms
+from deeptutor.exam_packs.links import get_or_create_mastery_link
 
 router = APIRouter()
 
@@ -61,6 +62,13 @@ def _get_pack(pack_id: str) -> ExamPack:
     raise HTTPException(status_code=404, detail="Exam pack not found")
 
 
+def _get_subject(exam_pack: ExamPack, subject_id: str) -> Subject:
+    for subject in exam_pack.subjects:
+        if subject.id == subject_id:
+            return subject
+    raise HTTPException(status_code=404, detail="Exam subject not found")
+
+
 @router.get("", response_model=list[PackSummary])
 def list_exam_packs() -> list[ExamPack]:
     return _get_packs()
@@ -69,15 +77,23 @@ def list_exam_packs() -> list[ExamPack]:
 @router.get("/{pack}/subjects/{subject}", response_model=SubjectDetail)
 def get_exam_subject(pack: str, subject: str) -> dict:
     exam_pack = _get_pack(pack)
-    for exam_subject in exam_pack.subjects:
-        if exam_subject.id == subject:
-            return {
-                "id": exam_subject.id,
-                "title": exam_subject.title,
-                "questionnaires": exam_subject.questionnaires,
-                "topics": [topic for topic in exam_pack.topics if topic.subject_id == subject],
-            }
-    raise HTTPException(status_code=404, detail="Exam subject not found")
+    exam_subject = _get_subject(exam_pack, subject)
+    return {
+        "id": exam_subject.id,
+        "title": exam_subject.title,
+        "questionnaires": exam_subject.questionnaires,
+        "topics": [topic for topic in exam_pack.topics if topic.subject_id == subject],
+    }
+
+
+@router.post("/{pack}/subjects/{subject}/topics/{topic}/mastery-link")
+def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
+    exam_pack = _get_pack(pack)
+    _get_subject(exam_pack, subject)
+    for exam_topic in exam_pack.topics:
+        if exam_topic.id == topic and exam_topic.subject_id == subject:
+            return {"path_id": get_or_create_mastery_link(exam_pack, exam_topic)}
+    raise HTTPException(status_code=404, detail="Exam topic not found")
 
 
 @router.get("/{pack}/glossary", response_model=list[GlossaryTerm])

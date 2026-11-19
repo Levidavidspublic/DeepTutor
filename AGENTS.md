@@ -184,3 +184,9 @@ including `verify-release`, and verify the downloads on the actual GitHub
 Release before reporting completion. If any platform fails, fix and rerun it;
 do not silently omit Intel Mac or treat a partial desktop release as complete.
 See `apps/desktop/README.md` for the build and publication flow.
+
+## Project reference (read first)
+
+The permanent reference for every agent working on this fork (Cursor, Codex, Friday, kitchens) is the six docs in `fork/docs/`:
+`PRD.md`, `TRD.md`, `APP_FLOW.md`, `UI_BRIEF.md`, `BACKEND_SCHEMA.md`, `ROADMAP.md`.
+Fork rules: `fork/README.md`. If a doc is missing, say so in your report; don't invent it.
