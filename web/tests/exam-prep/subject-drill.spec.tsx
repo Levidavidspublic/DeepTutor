@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExamSubjectDetail } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
@@ -13,9 +14,15 @@ const subjectApi = "/api/exam-packs/demo%20pack/subjects/math%231";
 const topicDeckUrl = `${subjectApi}/topics/linear%20%2B%20slope/deck?dt_workspace=${workspaceId}`;
 const noCards = "No drill cards for this topic yet";
 
-// Vite resolves literal dynamic imports during collection, even in skipped tests.
-const decksModule = "@/features/exam-prep/decksApi";
-const topicMapModule = "@/features/exam-prep/components/SubjectTopicMap";
+// Vite resolves these variable imports against the files available in the checkout.
+const decksModule = "decksApi";
+const topicMapModule = "SubjectTopicMap";
+type TopicMapModule = {
+  SubjectTopicMap: ComponentType<{ packId: string; subjectId: string }>;
+};
+type DecksModule = {
+  createTopicDeck(packId: string, subjectId: string, topicId: string): Promise<unknown>;
+};
 
 const subject: ExamSubjectDetail = {
   id: subjectId,
@@ -77,8 +84,7 @@ describe.skip("S3 topic Drill KITCHEN-PENDING #184", () => {
   });
 
   it("POSTs to the encoded, workspace-scoped topic endpoint and returns the server deck", async () => {
-    // @ts-expect-error KITCHEN-PENDING #184 not built yet
-    const { createTopicDeck } = await import(/* @vite-ignore */ decksModule) as typeof import("@/features/exam-prep/decksApi");
+    const { createTopicDeck }: DecksModule = await import(`../../features/exam-prep/${decksModule}.ts`);
     fetchMock.mockResolvedValueOnce(Response.json(deck));
 
     await expect(createTopicDeck(packId, subjectId, topicId)).resolves.toEqual(deck);
@@ -91,8 +97,7 @@ describe.skip("S3 topic Drill KITCHEN-PENDING #184", () => {
   });
 
   it("disables Drill while creation is pending and opens the returned deck", async () => {
-    // @ts-expect-error KITCHEN-PENDING #184 not built yet
-    const { SubjectTopicMap } = await import(/* @vite-ignore */ topicMapModule) as typeof import("@/features/exam-prep/components/SubjectTopicMap");
+    const { SubjectTopicMap }: TopicMapModule = await import(`../../features/exam-prep/components/${topicMapModule}.tsx`);
     const pending = Promise.withResolvers<Response>();
     fetchMock.mockResolvedValueOnce(Response.json(subject)).mockReturnValueOnce(pending.promise);
     const user = userEvent.setup();
@@ -113,8 +118,7 @@ describe.skip("S3 topic Drill KITCHEN-PENDING #184", () => {
   });
 
   it.each([404, 422])("shows one message by the selected topic and stays on S3 after HTTP %i", async (status) => {
-    // @ts-expect-error KITCHEN-PENDING #184 not built yet
-    const { SubjectTopicMap } = await import(/* @vite-ignore */ topicMapModule) as typeof import("@/features/exam-prep/components/SubjectTopicMap");
+    const { SubjectTopicMap }: TopicMapModule = await import(`../../features/exam-prep/components/${topicMapModule}.tsx`);
     fetchMock
       .mockResolvedValueOnce(Response.json(subject))
       .mockResolvedValueOnce(Response.json({ detail: "No terms" }, { status }));
@@ -133,8 +137,7 @@ describe.skip("S3 topic Drill KITCHEN-PENDING #184", () => {
   });
 
   it("offers the existing retry action for a server error", async () => {
-    // @ts-expect-error KITCHEN-PENDING #184 not built yet
-    const { SubjectTopicMap } = await import(/* @vite-ignore */ topicMapModule) as typeof import("@/features/exam-prep/components/SubjectTopicMap");
+    const { SubjectTopicMap }: TopicMapModule = await import(`../../features/exam-prep/components/${topicMapModule}.tsx`);
     fetchMock
       .mockResolvedValueOnce(Response.json(subject))
       .mockResolvedValueOnce(Response.json({ detail: "Service unavailable" }, { status: 503 }))
