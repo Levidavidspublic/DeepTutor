@@ -55,6 +55,7 @@ it("clamps both numeric ranges and uses defaults for invalid settings", () => {
 
 it.each([
   { requested: "lexend", saved: "lexend", family: "__Lexend_test, system-ui, sans-serif" },
+  // #182 replaces this fallback when OpenDyslexic becomes a selectable preference.
   { requested: "opendyslexic", saved: "system", family: "system-ui, sans-serif" },
 ] as const)(
   "applies and restores the wrapper settings after requesting $requested",
@@ -89,13 +90,15 @@ it.each([
     };
     expect(button.parentElement).toHaveStyle(expectedStyle);
     expect(button.parentElement).toHaveAttribute("data-contrast", "high");
-    expect(JSON.parse(localStorage.getItem("deeptutor-study-comfort") ?? "null")).toEqual({
+    const expectedSettings = {
       font: saved,
       sizePct: 150,
       lineHeight: 1.8,
       letterSpacing: "wide",
       contrast: "high",
-    });
+    };
+    const readSavedSettings = () => JSON.parse(localStorage.getItem("deeptutor-study-comfort") ?? "null");
+    expect(readSavedSettings()).toEqual(expectedSettings);
 
     view.unmount();
     render(
@@ -106,10 +109,11 @@ it.each([
     const restored = await screen.findByRole("button", { name: `${saved}, text size 150%` });
     expect(restored.parentElement).toHaveStyle(expectedStyle);
     expect(restored.parentElement).toHaveAttribute("data-contrast", "high");
+    expect(readSavedSettings()).toEqual(expectedSettings);
   },
 );
 
-it("restores the other preferences when a saved font is no longer supported", async () => {
+it("restores the other preferences with the current OpenDyslexic fallback (pending #182)", async () => {
   const storageKey = "deeptutor-study-comfort";
   localStorage.setItem(storageKey, JSON.stringify({ font: "opendyslexic", sizePct: 125 }));
 
