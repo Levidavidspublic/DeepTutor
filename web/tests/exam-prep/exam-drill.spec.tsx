@@ -184,6 +184,29 @@ it("checks a trimmed, case-insensitive quiz answer and resets it on the next car
   expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
+it("checks multiline answers from saved decks with Windows line endings", async () => {
+  const multilineDeck: ExamDeck = {
+    ...savedDeck,
+    cards: [{ front: "List the two coordinate axes.", back: "X axis\r\nY axis" }],
+  };
+  window.history.replaceState({}, "", deckUrl(multilineDeck.id));
+  fetchMock.mockImplementation(async (url) => Response.json(
+    url === `${decksApi}/${multilineDeck.id}?${workspaceQuery}` ? multilineDeck : [summary(multilineDeck)],
+  ));
+  render(<DrillPage />);
+  const deck = within(await screen.findByRole("region", { name: multilineDeck.title }));
+  const user = userEvent.setup();
+  await user.click(deck.getByRole("button", { name: "Quiz" }));
+  const answer = deck.getByRole("textbox", { name: "Your answer" });
+
+  await user.type(answer, "x axis{Shift>}{Enter}{/Shift}y axis");
+  expect(answer).toHaveValue("x axis\ny axis");
+  expect(deck.queryByText("Correct")).not.toBeInTheDocument();
+  await user.keyboard("{Enter}");
+  expect(deck.getByText("Correct")).toBeVisible();
+  expect(deck.getByText("X axis Y axis")).toBeVisible();
+});
+
 it("offers localized retries when the list and file import fail", async () => {
   fetchMock
     .mockRejectedValueOnce(new Error("Offline"))

@@ -42,7 +42,7 @@ function DeckPlayer({ deck }: { deck: ExamDeck }) {
   const card = deck.cards[index];
   const visibleSide = revealed ? card.back : card.front;
   const speechLanguage = /\p{Script=Hebrew}/u.test(visibleSide) ? "he" : i18n.resolvedLanguage;
-  const correct = draft.trim().toLowerCase() === card.back.trim().toLowerCase();
+  const correct = draft.trim().toLowerCase() === card.back.replace(/\r\n?/g, "\n").trim().toLowerCase();
 
   function resetAnswer() {
     setDraft("");
@@ -114,13 +114,18 @@ function DeckPlayer({ deck }: { deck: ExamDeck }) {
           if (draft.trim() && !revealed) setRevealed(true);
         }}>
           <label htmlFor={answerId} className="block text-sm font-medium">{t("Your answer")}</label>
-          <input
+          <textarea
             id={answerId}
-            type="text"
+            rows={3}
             dir="auto"
             value={draft}
             readOnly={revealed}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }}
             className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <Button type="submit" disabled={!draft.trim() || revealed}>{t("Check answer")}</Button>
