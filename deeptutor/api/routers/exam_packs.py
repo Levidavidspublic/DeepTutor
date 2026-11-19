@@ -1,4 +1,4 @@
-"""API for runtime exam packs, Guided Learning links, and topic progress."""
+"""API for runtime exam packs, Guided Learning links, and teach-back."""
 
 from __future__ import annotations
 
@@ -84,9 +84,9 @@ def _get_subject(exam_pack: ExamPack, subject_id: str) -> Subject:
 
 
 def _get_topic(exam_pack: ExamPack, subject_id: str, topic_id: str) -> Topic:
-    _get_subject(exam_pack, subject_id)
+    subject = _get_subject(exam_pack, subject_id)
     for topic in exam_pack.topics:
-        if topic.id == topic_id and topic.subject_id == subject_id:
+        if topic.id == topic_id and topic.subject_id == subject.id:
             return topic
     raise HTTPException(status_code=404, detail="Exam topic not found")
 
@@ -138,7 +138,12 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
                 "application/json": {
                     "schema": {
                         "type": "object",
-                        "properties": {"learner_text": {"type": "string"}},
+                    "properties": {
+                        "learner_text": {
+                            "type": "string",
+                            "description": "Answer with 1–4000 characters after trimming.",
+                        }
+                    },
                         "required": ["learner_text"],
                     }
                 }
