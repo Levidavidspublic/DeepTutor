@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 """API for runtime exam packs and topic progress."""
+=======
+"""API for runtime exam packs, Guided Learning links, and teach-back."""
+>>>>>>> origin/main
 
 from __future__ import annotations
 
@@ -92,13 +96,20 @@ def _get_subject(exam_pack: ExamPack, subject_id: str) -> Subject:
 
 
 def _get_topic(exam_pack: ExamPack, subject_id: str, topic_id: str) -> Topic:
+<<<<<<< HEAD
     _get_subject(exam_pack, subject_id)
     for topic in exam_pack.topics:
         if topic.subject_id == subject_id and topic.id == topic_id:
+=======
+    subject = _get_subject(exam_pack, subject_id)
+    for topic in exam_pack.topics:
+        if topic.id == topic_id and topic.subject_id == subject.id:
+>>>>>>> origin/main
             return topic
     raise HTTPException(status_code=404, detail="Exam topic not found")
 
 
+<<<<<<< HEAD
 def _summarize_pack(pack: ExamPack, today: date) -> PackSummary:
     topics_by_subject: dict[str, dict[str, Topic]] = {}
     for topic in pack.topics:
@@ -133,6 +144,8 @@ def _summarize_pack(pack: ExamPack, today: date) -> PackSummary:
     )
 
 
+=======
+>>>>>>> origin/main
 @router.get("", response_model=list[PackSummary])
 def list_exam_packs() -> list[PackSummary]:
     today = datetime.now(timezone.utc).date()
@@ -181,7 +194,16 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
                 "application/json": {
                     "schema": {
                         "type": "object",
+<<<<<<< HEAD
                         "properties": {"learner_text": {"type": "string"}},
+=======
+                    "properties": {
+                        "learner_text": {
+                            "type": "string",
+                            "description": "Answer with 1–4000 characters after trimming.",
+                        }
+                    },
+>>>>>>> origin/main
                         "required": ["learner_text"],
                     }
                 }
@@ -190,7 +212,11 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
     },
 )
 async def submit_teach_back(pack: str, subject: str, topic: str, request: Request) -> TeachBackResult:
+<<<<<<< HEAD
     exam_pack = await run_in_threadpool(_get_pack, pack)
+=======
+    exam_pack = _get_pack(pack)
+>>>>>>> origin/main
     exam_topic = _get_topic(exam_pack, subject, topic)
     # FastAPI's automatic body validation can echo rejected input in its error response.
     try:

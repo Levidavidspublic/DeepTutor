@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from contextlib import contextmanager
 from datetime import datetime, time, timedelta, timezone
 import json
@@ -207,10 +208,10 @@ class CalendarStore:
             )
         return payload.model_dump()
 
-    def _new(self, db, data, **extra):
+    def _new(self, db, data, *, event_id: str | None = None, **extra):
         event = CalendarEvent(
             **self._validated(db, data),
-            id=uuid4().hex,
+            id=uuid4().hex if event_id is None else event_id,
             exdates=[],
             series_id=None,
             recurrence_id=None,
@@ -225,6 +226,21 @@ class CalendarStore:
         with self.connect(write=True) as db:
             event = self._new(db, payload.model_dump())
             return {"event": event, "revision": self._changed(db)}
+
+    def create_batch(self, entries: Iterable[tuple[str, EventInput]]):
+        """Save missing IDs atomically and return stored events in input order."""
+        with self.connect(write=True) as db:
+            events = []
+            inserted = False
+            for event_id, payload in entries:
+                try:
+                    event = self._get(db, event_id)
+                except KeyError:
+                    event = self._new(db, payload.model_dump(), event_id=event_id)
+                    inserted = True
+                events.append(event)
+            revision = self._changed(db) if inserted else self._revision(db)
+            return {"events": events, "revision": revision}
 
     @staticmethod
     def _fields(event):
