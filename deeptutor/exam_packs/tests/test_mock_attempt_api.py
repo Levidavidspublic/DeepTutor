@@ -82,6 +82,9 @@ async def client(pack_path, attempts_dir, pipeline_run, monkeypatch):
 async def test_start_and_reload_preserve_timer_and_hide_scoring(
     client, attempts_dir, pipeline_run, monkeypatch
 ):
+    monkeypatch.setattr(
+        learning_access, "current_learning_policy", lambda: {"allowed_surfaces": ["chat"]}
+    )
     now = datetime(2027, 2, 3, 23, 50, tzinfo=timezone.utc)
 
     class FrozenDateTime(datetime):
@@ -189,22 +192,30 @@ async def test_missing_and_invalid_mock_input_never_calls_the_tutor(
     assert not attempts_dir.exists()
 
 
-@pytest.mark.parametrize(
-    ("failure", "status"),
-    [
-        (LLMConfigError("Tutor config details"), 503),
-        (RuntimeError("Provider details"), 502),
-        (None, 502),
-    ],
-)
+async def test_unconfigured_tutor_does_not_save_an_attempt(
+    client, attempts_dir, pipeline_run, monkeypatch
+):
+    def missing_config():
+        raise LLMConfigError("Tutor config details")
+
+    monkeypatch.setattr("deeptutor.agents.question.pipeline.get_llm_config", missing_config)
+
+    response = await client.post(START_URL, json=START_BODY)
+    assert response.status_code == 503
+    assert "details" not in response.text
+    pipeline_run.assert_not_awaited()
+    assert not attempts_dir.exists()
+
+
+@pytest.mark.parametrize("failure", [RuntimeError("Provider details"), None])
 async def test_failed_generation_does_not_save_an_attempt(
-    client, attempts_dir, pipeline_run, failure, status
+    client, attempts_dir, pipeline_run, failure
 ):
     pipeline_run.side_effect = failure
     pipeline_run.return_value = {"summary": {"results": []}}
 
     response = await client.post(START_URL, json=START_BODY)
-    assert response.status_code == status
+    assert response.status_code == 502
     assert "details" not in response.text
     pipeline_run.assert_awaited_once()
     assert not attempts_dir.exists()
