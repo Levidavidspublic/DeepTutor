@@ -182,6 +182,24 @@ def test_skips_unusable_events_between_valid_events(properties):
     assert [entry.event.title for entry in parse_feed(text, tzid="UTC")] == ["Before", "After"]
 
 
+@pytest.mark.parametrize("status", ["STATUS:CANCELLED", 'status;X-SOURCE="demo:feed":cancelled'])
+def test_first_import_skips_cancelled_events_even_with_reminders_enabled(status):
+    from deeptutor.exam_packs.feed import parse_feed
+
+    text = _calendar(
+        _event("SUMMARY:Confirmed class", "DTSTART:20270708T083000Z", "STATUS:CONFIRMED"),
+        _event("SUMMARY:Cancelled class", "DTSTART:20270708T103000Z", status),
+        _event("SUMMARY:Class without status", "DTSTART:20270708T123000Z"),
+    )
+
+    events = parse_feed(text, tzid="UTC", remind=True)
+
+    assert [(entry.event.title, entry.event.reminders) for entry in events] == [
+        ("Confirmed class", [10]),
+        ("Class without status", [10]),
+    ]
+
+
 def test_empty_calendar_has_no_events():
     from deeptutor.exam_packs.feed import parse_feed
 
