@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test } from "vitest";
 
 import { initI18n } from "@/i18n/init";
+import frExam from "@/locales/fr/exam.json";
 import ukExam from "@/locales/uk/exam.json";
 
 const localesDir = path.join(import.meta.dirname, "../../locales");
@@ -42,6 +43,16 @@ test("en/exam.json contains the Phase 1 keys", () => {
 
 test.each(otherLocales)("%s/exam.json matches the English key set", (locale) => {
   expect(examKeys(locale)).toEqual(englishKeys);
+});
+
+test("fr/exam.json provides French copy for Exams home", () => {
+  expect(frExam).toMatchObject({
+    title: "Préparation aux examens",
+    "empty.title": "Aucun pack de préparation pour le moment",
+    "empty.body": "Ajoutez un pack de préparation pour commencer.",
+    subjects: "Matières",
+    continue: "Continuer",
+  });
 });
 
 test("uk/exam.json has no English-only labels", () => {
