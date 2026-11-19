@@ -259,7 +259,7 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
         </div>
         {studyLaunch.status === "error" && studyLaunch.topicId === topicId && (
           <LearningErrorState
-            message={t("Could not start the conversation")}
+            message={t("guidedLearning.connectionError")}
             onRetry={() => void startStudy(topicId)}
           />
         )}

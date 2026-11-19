@@ -103,6 +103,7 @@ it("keeps the subject visible and retries Study for the same topic after a failu
   const study = topic.getByRole("button", { name: "Study" });
   await user.click(study);
   const alert = await topic.findByRole("alert");
+  expect(alert).toHaveTextContent("Connection error");
   expect(screen.getByRole("alert")).toBe(alert);
   expect(screen.getByRole("heading", { level: 1, name: "Algebra" })).toBeVisible();
   expect(redirect).not.toHaveBeenCalled();
