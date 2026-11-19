@@ -27,17 +27,20 @@ Status: draft for Amit's review. Gaps are `UNKNOWN`; inferred lines are `(EXTRAP
 - Each subject opens a topic map built from the pack's topic tree, linked to DeepTutor's existing mastery paths (Guided Learning).
 
 ### F3 Study tools ported from the Omni Tutor desk (parity list)
-| Desk tool (omni-tutor `study/src`) | Lands in DeepTutor as |
-|---|---|
-| PDF notes (`pdf.ts`, `note-file.ts`) | Reading materials + a notes panel with print/download |
-| Teach-back (`desk.ts`) | A "Teach it back" mode: the learner explains, the tutor checks against the topic's objectives |
-| Lessons, pause-to-ask (`lesson.ts`, `demo.ts`) | Mastery session lesson steps with a pause-and-ask button |
-| Weekly plan, quick capture, transcript search (`more.ts`) | Exam plan view writing to DeepTutor's calendar; capture into notebooks |
-| Nudges and class reminders (`remind.ts`, `alerts.ts`, `feed.ts`) | Opt-in browser reminders; ICS feed import into the calendar |
-| Games and decks (`deck.ts`, `turn.ts`) | Decks (CSV/Anki text import) played as flash cards and quick quizzes |
-| Timed mock, marking, progress (`bagrut.ts`) | Practice: timed mock paper from pack topics, marked with rubric feedback |
-| Voice turns, speed control (`voice.ts`, `lesson.ts`) | Read-aloud on every block and voice questions, speed 0.5-2x |
-| Phone handwriting hand-off (`handoff.ts`, `qr.ts`) | Phase 3 (EXTRAPOLATED): send a photo of handwritten work by QR |
+| Desk tool (omni-tutor `study/src`) | Lands in DeepTutor as | Phase 4 acceptance check on preview |
+|---|---|---|
+| PDF notes (`pdf.ts`, `note-file.ts`) | Reading materials + a notes panel with print/download | Open a pack PDF, then print and download its notes. |
+| Teach-back (`desk.ts`) | A "Teach it back" mode: the learner explains, the tutor checks against the topic's objectives | Submit an explanation and see feedback tied to the topic objectives. |
+| Lessons, pause-to-ask (`lesson.ts`, `demo.ts`) | Mastery session lesson steps with a pause-and-ask button | Start a lesson, pause to ask a question, then resume at the same step. |
+| Weekly plan, quick capture (`more.ts`) | Exam plan view writing to DeepTutor's calendar and quick capture into notebooks | Create a week of sessions and confirm they appear in the calendar. Capture a note and reopen it in a notebook. |
+| Transcript search (`more.ts`) | Chat history search for study-session transcripts, accessible from Learning | Search for a phrase in a study-session transcript and open the matching message. |
+| Board | Phase 3 study board in Learning (EXTRAPOLATED) | Add and edit a board item, then reopen the board and confirm the edit is saved. |
+| Saved apps | Phase 3 saved apps library in Learning (EXTRAPOLATED) | Save a study app, return to Learning, then find and launch it from the library. |
+| Nudges and class reminders (`remind.ts`, `alerts.ts`, `feed.ts`) | Opt-in browser reminders; ICS feed import into the calendar | Import an ICS feed, confirm the events appear, and verify that study nudges and class reminders fire when enabled. |
+| Games and decks (`deck.ts`, `turn.ts`) | Decks (CSV/Anki text import) played as flash cards and quick quizzes | Import CSV and Anki text decks, then play flash cards and complete a quick quiz. |
+| Timed mock, marking, progress (`bagrut.ts`) | Timed mock paper from pack topics with rubric feedback and progress in Exams | Submit a timed mock and verify the mark, rubric feedback and updated progress. |
+| Voice turns, speed control (`voice.ts`, `lesson.ts`) | Read-aloud on every block and voice questions, speed 0.5-2x | Ask a question by voice and verify that every content block can be read aloud at 0.5x and 2x. |
+| Phone handwriting hand-off (`handoff.ts`, `qr.ts`) | Phase 3 (EXTRAPOLATED): send a photo of handwritten work by QR | Scan the QR code on a phone, upload a photo and confirm it reaches the study session. |
 
 ### F4 Accessible study mode
 - Focus mode: one task on screen, a short timer, one clear next step.
@@ -50,7 +53,9 @@ Status: draft for Amit's review. Gaps are `UNKNOWN`; inferred lines are `(EXTRAP
 
 ## Feature parity
 
-Parity target: everything on the private `/study/desk` page listed in F3. The desk is retired only when every row is shipped and checked (Roadmap Phase 4). Comparators for UX: studywithmommy.com (Amit's reference, on its waiting list - details `UNKNOWN`) and DeepTutor's own current UI. Live comparator research has not been done for this draft: `UNKNOWN`.
+The Phase 4 parity gate requires every capability in F3 to ship and Amit to verify every acceptance check on preview before the private `/study/desk` can be retired.
+
+Comparators for UX: studywithmommy.com (Amit's reference, on its waiting list - details `UNKNOWN`) and DeepTutor's own current UI. Live comparator research has not been done for this draft: `UNKNOWN`.
 
 ## Out of scope
 
