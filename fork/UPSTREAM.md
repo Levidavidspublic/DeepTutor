@@ -14,8 +14,7 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 |---|---|
 | `deeptutor/api/router_loader.py` | one line: register `routers/exam_packs.py` |
 | `pyproject.toml` | one entry in pytest `testpaths` |
-| `web/components/learning/LearningDashboard.tsx` | Workspace-scoped Exams link next to the modern Learning filters |
-| `web/features/ui-layout/classic/ClassicLearningDashboard.tsx` | Workspace-scoped Exams link alongside the classic Learning choices |
+| Learning tab list (file found by code map) | one tab entry: Exams |
 | Settings section registry (file found by code map) | one section entry: Study comfort |
 | `web/locales/*/exam.json` | new files only |
 
