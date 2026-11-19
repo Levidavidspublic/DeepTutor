@@ -20,6 +20,10 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
+vi.mock("next/font/google", () => ({
+  Lexend: () => ({ style: { fontFamily: "__Lexend_test, system-ui, sans-serif" } }),
+}));
+
 const i18n = initI18n("en");
 const fetchMock = vi.fn<typeof fetch>();
 const attempt: MockAttempt = {
