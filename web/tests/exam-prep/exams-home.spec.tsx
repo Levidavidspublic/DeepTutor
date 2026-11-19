@@ -1,13 +1,15 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { I18nextProvider } from "react-i18next";
 import { beforeEach, expect, it, vi } from "vitest";
 import Page from "@/app/(workspace)/learning/exams/page";
 import { listExamPacks } from "@/features/exam-prep/api";
 import type { ExamPackSummary } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
+import viExam from "@/locales/vi/exam.json";
 
 vi.mock("@/features/exam-prep/api", () => ({ listExamPacks: vi.fn() }));
 
-initI18n("en");
+const i18n = initI18n("en");
 
 const pack: ExamPackSummary = {
   id: "demo pack",
@@ -66,6 +68,30 @@ it("shows the empty state with a plain next step", async () => {
   expect(screen.getByText("Add an exam pack to get started.")).toBeVisible();
   expect(screen.queryByRole("link", { name: "Add an exam pack to get started." })).not.toBeInTheDocument();
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
+});
+
+it("renders Vietnamese labels with the Vietnamese exam resource loaded", async () => {
+  const vietnamese = i18n.cloneInstance({ lng: "vi", forkResourceStore: true });
+  vietnamese.addResourceBundle("vi", "exam", viExam);
+  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([pack]);
+
+  const renderPage = () =>
+    render(
+      <I18nextProvider i18n={vietnamese}>
+        <Page />
+      </I18nextProvider>,
+    );
+
+  const emptyPage = renderPage();
+  expect(await screen.findByRole("heading", { name: "Chưa có gói ôn thi nào" })).toBeVisible();
+  expect(screen.getByRole("heading", { level: 1, name: "Ôn thi" })).toBeVisible();
+  expect(screen.getByText("Thêm gói ôn thi để bắt đầu.")).toBeVisible();
+  emptyPage.unmount();
+
+  renderPage();
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  expect(within(card).getByRole("list", { name: "Môn học" })).toBeVisible();
+  expect(within(card).getByRole("link", { name: "Tiếp tục Math" })).toBeVisible();
 });
 
 it("gives each subject a named Continue link with both path segments encoded", async () => {
