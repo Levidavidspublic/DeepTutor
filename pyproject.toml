@@ -275,7 +275,7 @@ max-complexity = 10
 # Pytest configuration
 # ============================================
 [tool.pytest.ini_options]
-testpaths = ["tests", "deeptutor/learning/tests"]
+testpaths = ["tests", "deeptutor/learning/tests", "deeptutor/exam_packs/tests"]
 pythonpath = ["."]
 markers = [
     "asyncio: mark async tests that require pytest-asyncio",
