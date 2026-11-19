@@ -162,6 +162,8 @@ def test_returns_frozen_feed_events_with_stable_ids_sorted_by_normalized_start()
     [
         pytest.param((), id="missing-dtstart"),
         pytest.param(("DTSTART:20270708T103000Z", "RRULE:FREQ=WEEKLY;COUNT=3"), id="recurring"),
+        pytest.param(("DTSTART:20270708T093000Z", "RDATE:20270715T093000Z"), id="additional-date"),
+        pytest.param(("DTSTART:20270708T093000Z", "EXDATE:20270708T093000Z"), id="excluded-start"),
         pytest.param(("DTSTART:invalid",), id="malformed-dtstart"),
         pytest.param(("DTSTART;TZID=Invalid/StudyZone:20270708T103000",), id="unknown-zone"),
         pytest.param(("DTSTART:20270708T103000Z", "DTEND:20270708T103000Z"), id="zero-length"),
