@@ -1,0 +1,6 @@
+# Kitchen v5: no automatic per-PR reviews.
+# The kitchen asks for one review per batch of merges with "@coderabbitai full review" on a roll-up PR.
+# Key from docs.coderabbit.ai/configuration/auto-review (manual review commands still work).
+reviews:
+  auto_review:
+    enabled: false
