@@ -181,6 +181,47 @@ async def test_exam_pack_routes(
     assert (await client.get("/api/exam-packs")).json()[0]["title"] == "Updated Sample Pack"
 
 
+async def test_exam_pack_list_skips_duplicate_ids(
+    pack_path: Path, client: AsyncClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    duplicate = pack_path.with_name("sample-pack-duplicate")
+    other = pack_path.with_name("sample-pack-other")
+    copytree(pack_path, duplicate)
+    copytree(pack_path, other)
+    metadata = json.loads((pack_path / "pack.json").read_text(encoding="utf-8"))
+    (duplicate / "pack.json").write_text(
+        json.dumps({**metadata, "title": "Duplicate Pack"}), encoding="utf-8"
+    )
+    (other / "pack.json").write_text(
+        json.dumps({**metadata, "id": "other-pack", "title": "Other Pack"}), encoding="utf-8"
+    )
+
+    response = await client.get("/api/exam-packs")
+    assert response.status_code == 200
+    assert [(pack["id"], pack["title"]) for pack in response.json()] == [
+        ("sample-pack", "Sample Pack"),
+        ("other-pack", "Other Pack"),
+    ]
+    assert "Skipping broken exam pack sample-pack-duplicate" in caplog.text
+
+
+async def test_reload_rejects_duplicate_topic_ids_within_a_subject(
+    client: AsyncClient, pack_path: Path
+) -> None:
+    assert (await client.get(SUBJECT_URL)).status_code == 200
+
+    functions = pack_path / "topics" / "math" / "functions.md"
+    functions.with_name("functions-copy.md").write_text(
+        functions.read_text(encoding="utf-8").replace("title: Functions", "title: Another lesson"),
+        encoding="utf-8",
+    )
+
+    response = await client.post("/api/exam-packs/reload")
+    assert response.status_code == 200
+    assert response.json() == {"count": 0}
+    assert (await client.get(SUBJECT_URL)).status_code == 404
+
+
 async def test_teach_back_updates_only_the_submitted_pack_topic(
     client: AsyncClient,
     pack_path: Path,
