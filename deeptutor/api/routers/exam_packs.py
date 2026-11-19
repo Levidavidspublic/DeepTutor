@@ -229,7 +229,7 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
     },
 )
 async def submit_teach_back(pack: str, subject: str, topic: str, request: Request) -> TeachBackResult:
-    exam_pack = _get_pack(pack)
+    exam_pack = await run_in_threadpool(_get_pack, pack)
     exam_topic = _get_topic(exam_pack, subject, topic)
     # FastAPI's automatic body validation can echo rejected input in its error response.
     try:
@@ -262,7 +262,7 @@ def get_exam_glossary(pack: str, q: str | None = None) -> list[GlossaryTerm]:
 
 @router.post("/{pack}/mock", response_model=MockAttemptResponse)
 async def start_mock(pack: str, request: StartMockRequest) -> MockAttemptResponse:
-    exam_pack = _get_pack(pack)
+    exam_pack = await run_in_threadpool(_get_pack, pack)
     subject = _get_subject(exam_pack, request.subject_id)
     questionnaire = next(
         (item for item in subject.questionnaires if item.code == request.questionnaire_code), None

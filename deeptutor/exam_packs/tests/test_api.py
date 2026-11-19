@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 from shutil import copytree
+from threading import get_ident
 
 from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
@@ -232,6 +233,7 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
     applied_math = pack_path / "topics" / "applied-math"
     applied_math.mkdir()
     (applied_math / "functions.md").write_bytes(functions.read_bytes())
+    (applied_math / "functions-copy.md").write_bytes(functions.read_bytes())
 
     async def list_progress() -> dict[tuple[str, str], dict[str, int]]:
         response = await client.get("/api/exam-packs")
@@ -304,6 +306,14 @@ async def test_teach_back_updates_only_the_submitted_pack_topic(
 async def test_teach_back_title_fallback_and_concurrent_appends(
     client: AsyncClient, pack_path: Path, state_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    event_loop_thread = get_ident()
+    load_packs = exam_packs.load_packs
+
+    def load_packs_off_loop():
+        assert get_ident() != event_loop_thread
+        return load_packs()
+
+    monkeypatch.setattr(exam_packs, "load_packs", load_packs_off_loop)
     graphs = pack_path / "topics" / "math" / "graphs.md"
     graphs.write_text(
         graphs.read_text(encoding="utf-8").replace("objectives: [Read a graph]", "objectives: []"),
@@ -463,12 +473,7 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
-    exam_route = next(
-        route for route in questions["routes"] if route["reference"].endswith(".exam_packs:router")
-    )
-    monkeypatch.setattr(
-        module_routes, "manifests", lambda: {"questions": {**questions, "routes": [exam_route]}}
-    )
+    monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
     app = FastAPI()
     module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
 
