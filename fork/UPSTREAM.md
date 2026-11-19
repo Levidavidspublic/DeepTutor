@@ -4,13 +4,14 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 
 ## How to sync (by a ticket, never straight to main)
 1. `git fetch upstream --tags`
-2. `git switch -c sync/upstream-<tag> main && git merge <tag>`
-3. Resolve conflicts. Only the files below should conflict.
-4. Run `npm run typecheck && npm run i18n:check` from `web/` for every sync.
+2. Update local `main` from the fork with `git fetch origin main && git switch main && git merge --ff-only origin/main`. Continue only if this succeeds.
+3. `git switch -c sync/upstream-<tag> main && git merge <tag>`
+4. Resolve conflicts. Only the files below should conflict.
+5. Run `npm run typecheck && npm run i18n:check` from `web/` for every sync.
    If `deeptutor/exam_packs/tests` exists in the checkout, also run
    `pytest deeptutor/exam_packs/tests -q` from the repository root.
-5. Push the completed sync branch to the fork with `git push origin sync/upstream-<tag>`.
-6. Open a PR from `sync/upstream-<tag>` to `main`. Amit merges.
+6. Push the completed sync branch to the fork with `git push origin sync/upstream-<tag>`.
+7. Open a PR from `sync/upstream-<tag>` to `main`. Amit merges.
 
 ## Upstream files the fork is allowed to touch
 | File | Change |
