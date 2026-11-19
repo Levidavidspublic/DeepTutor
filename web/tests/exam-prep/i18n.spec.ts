@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import { initI18n } from "@/i18n/init";
 import frExam from "@/locales/fr/exam.json";
 import ukExam from "@/locales/uk/exam.json";
+import zhExam from "@/locales/zh/exam.json";
 
 const localesDir = path.join(import.meta.dirname, "../../locales");
 const otherLocales = readdirSync(localesDir, { withFileTypes: true })
@@ -58,6 +59,12 @@ test("fr/exam.json provides French copy for Exams home", () => {
 test("uk/exam.json has no English-only labels", () => {
   for (const [key, label] of Object.entries(ukExam)) {
     expect(label, key).toMatch(/\p{Script=Cyrillic}/u);
+  }
+});
+
+test("zh/exam.json uses Chinese text for every exam label", () => {
+  for (const [key, label] of Object.entries(zhExam)) {
+    expect(label, key).toMatch(/\p{Script=Han}/u);
   }
 });
 
