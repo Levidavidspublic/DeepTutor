@@ -1,5 +1,6 @@
 "use client";
 
+import { Lexend } from "next/font/google";
 import {
   createContext,
   useCallback,
@@ -13,6 +14,13 @@ import {
 import { clampStudyComfort, DEFAULT_STUDY_COMFORT, type StudyComfortSettings } from "./studyComfort";
 
 const STORAGE_KEY = "deeptutor-study-comfort";
+const SYSTEM_FONT = "system-ui, sans-serif";
+const lexend = Lexend({
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+  preload: false,
+});
 
 interface StudyComfortContextValue {
   settings: Readonly<StudyComfortSettings>;
@@ -22,8 +30,9 @@ interface StudyComfortContextValue {
 const StudyComfortContext = createContext<StudyComfortContextValue | null>(null);
 
 function normalizeSettings(value: unknown): StudyComfortSettings {
-  // Only the system font is available. Keep the rest of any saved preferences.
-  return { ...clampStudyComfort(value), font: DEFAULT_STUDY_COMFORT.font };
+  const settings = clampStudyComfort(value);
+  if (settings.font === "opendyslexic") settings.font = DEFAULT_STUDY_COMFORT.font;
+  return settings;
 }
 
 function readStoredSettings(): StudyComfortSettings | null {
@@ -70,7 +79,7 @@ export function StudyComfortProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ settings, updateSettings }), [settings, updateSettings]);
   const style = {
-    "--study-font": "system-ui, sans-serif",
+    "--study-font": settings.font === "lexend" ? lexend.style.fontFamily : SYSTEM_FONT,
     "--study-size": `${settings.sizePct}%`,
     "--study-line-height": settings.lineHeight,
     "--study-letter-spacing": settings.letterSpacing === "wide" ? "0.05em" : "normal",

@@ -10,14 +10,15 @@ Upstream: https://github.com/HKUDS/DeepTutor (remote `upstream`). Fork base: v1.
 5. Run `npm run typecheck && npm run i18n:check` from `web/` for every sync.
    If `deeptutor/exam_packs/tests` exists in the checkout, also run
    `pytest deeptutor/exam_packs/tests -q` from the repository root.
-6. Open a PR to `main`. Amit merges.
+6. Push the completed sync branch to the fork with `git push origin sync/upstream-<tag>`.
+7. Open a PR from `sync/upstream-<tag>` to `main`. Amit merges.
 
 ## Upstream files the fork is allowed to touch
 | File | Change |
 |---|---|
-| `deeptutor/modules/manifests/questions.json` | Register `routers/exam_packs.py` with learning auth |
+| `deeptutor/modules/manifests/questions.json` | Register `deeptutor.api.routers.exam_packs:router` with the `learning` auth policy |
 | `deeptutor/api/routers/auth.py` | Map `/api/exam-packs` to the `chat` learner surface |
-| `deeptutor/api/router_index.json` | Generated routing entries and fingerprint for lazy loading |
+| `deeptutor/api/router_index.json` | Use `python scripts/build_router_index.py` to regenerate the routing entries and fingerprint for lazy loading |
 | `deeptutor/services/calendar/store.py` | Add atomic batch creation with stable IDs for exam study sessions |
 | `pyproject.toml` | one entry in pytest `testpaths` |
 | `web/components/learning/LearningDashboard.tsx` | Workspace-scoped Exams link next to the modern Learning filters |
