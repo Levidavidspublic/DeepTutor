@@ -87,15 +87,24 @@ export function StudyComfortProvider({ children }: { children: ReactNode }) {
 
   return (
     <StudyComfortContext.Provider value={value}>
-      <div style={style} data-contrast={settings.contrast}>
+      <div
+        style={style}
+        data-contrast={settings.contrast}
+        data-reduced-motion={settings.reducedMotion ? "true" : undefined}
+        className="[&[data-reduced-motion=true]_*]:!animate-none [&[data-reduced-motion=true]_*]:!transition-none [&[data-reduced-motion=true]_*]:!scroll-auto"
+      >
         {children}
       </div>
     </StudyComfortContext.Provider>
   );
 }
 
+export function useOptionalStudyComfort(): StudyComfortContextValue | null {
+  return useContext(StudyComfortContext);
+}
+
 export function useStudyComfort(): StudyComfortContextValue {
-  const context = useContext(StudyComfortContext);
+  const context = useOptionalStudyComfort();
   if (context === null) {
     throw new Error("useStudyComfort must be used within a StudyComfortProvider");
   }

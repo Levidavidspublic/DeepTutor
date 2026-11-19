@@ -21,7 +21,7 @@ class MockUtterance {
 
 const speechSynthesis = { speak: vi.fn(), cancel: vi.fn() };
 
-describe.skip("Study comfort speech and motion settings KITCHEN-PENDING #181", () => {
+describe("Study comfort speech and motion settings", () => {
   it("defaults to 1x speech with reduced motion off", () => {
     expect(DEFAULT_STUDY_COMFORT).toMatchObject(defaults);
     expect(clampStudyComfort({})).toMatchObject(defaults);
@@ -60,7 +60,6 @@ describe.skip("Study comfort speech and motion settings KITCHEN-PENDING #181", (
   });
 
   it("reads the provider context optionally and returns null outside the provider", async () => {
-    // @ts-expect-error KITCHEN-PENDING #181 not built yet
     const { useOptionalStudyComfort } = await import("@/features/a11y-study/StudyComfortProvider");
 
     const outside = renderHook(() => useOptionalStudyComfort());

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { IconButton } from "@/shared/ui/IconButton";
 
+import { useOptionalStudyComfort } from "./StudyComfortProvider";
 import { useSpeech } from "./useSpeech";
 
 interface ReadAloudButtonProps {
@@ -13,13 +14,10 @@ interface ReadAloudButtonProps {
   lang?: string;
 }
 
-export function ReadAloudButton({
-  text,
-  rate = 1,
-  lang = "en",
-}: ReadAloudButtonProps) {
+export function ReadAloudButton({ text, rate, lang = "en" }: ReadAloudButtonProps) {
   const { t } = useTranslation();
-  const { speak, stop, isSpeaking } = useSpeech(text, rate, lang);
+  const savedRate = useOptionalStudyComfort()?.settings.readAloudRate;
+  const { speak, stop, isSpeaking } = useSpeech(text, rate ?? savedRate ?? 1, lang);
 
   return (
     <IconButton

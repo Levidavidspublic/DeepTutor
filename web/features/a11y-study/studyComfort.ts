@@ -4,6 +4,8 @@ export interface StudyComfortSettings {
   lineHeight: number;
   letterSpacing: "normal" | "wide";
   contrast: "normal" | "high";
+  readAloudRate: number;
+  reducedMotion: boolean;
 }
 
 export const DEFAULT_STUDY_COMFORT: Readonly<StudyComfortSettings> = {
@@ -12,6 +14,8 @@ export const DEFAULT_STUDY_COMFORT: Readonly<StudyComfortSettings> = {
   lineHeight: 1.6,
   letterSpacing: "normal",
   contrast: "normal",
+  readAloudRate: 1,
+  reducedMotion: false,
 };
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
@@ -34,5 +38,7 @@ export function clampStudyComfort(value: unknown): StudyComfortSettings {
     lineHeight: clampNumber(settings.lineHeight, 1.5, 2, DEFAULT_STUDY_COMFORT.lineHeight),
     letterSpacing: settings.letterSpacing === "wide" ? "wide" : DEFAULT_STUDY_COMFORT.letterSpacing,
     contrast: settings.contrast === "high" ? "high" : DEFAULT_STUDY_COMFORT.contrast,
+    readAloudRate: clampNumber(settings.readAloudRate, 0.5, 2, DEFAULT_STUDY_COMFORT.readAloudRate),
+    reducedMotion: settings.reducedMotion === true,
   };
 }

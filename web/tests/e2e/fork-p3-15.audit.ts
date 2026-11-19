@@ -13,7 +13,7 @@ const pack = {
   subjects: [],
 };
 
-test.describe.skip("Saved comfort on exam screens KITCHEN-PENDING #181", () => {
+test.describe("Saved comfort on exam screens", () => {
   test.use({ locale: "en-US", serviceWorkers: "block" });
 
   test("applies saved reduced motion to exam content and removes it after the preference is turned off", async ({ page }) => {
