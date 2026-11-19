@@ -152,7 +152,7 @@ it("omits missing dates and progress when the fields are absent or there are zer
   expect(within(card).queryByText("Exam date")).not.toBeInTheDocument();
 });
 
-it("uses German copy for the heading, empty state, and subject navigation when the resource is loaded", async () => {
+it("uses German copy and date formatting when the German resource is loaded", async () => {
   const germanI18n = i18n.cloneInstance({ lng: "de", forkResourceStore: true });
   germanI18n.addResourceBundle("de", "exam", deExam);
   const page = (
@@ -160,7 +160,19 @@ it("uses German copy for the heading, empty state, and subject navigation when t
       <Page />
     </I18nextProvider>
   );
-  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([pack]);
+  vi.mocked(listExamPacks).mockResolvedValueOnce([]).mockResolvedValueOnce([
+    {
+      ...pack,
+      subjects: [
+        { ...pack.subjects[0], progress: { done: 1, total: 4 } },
+        {
+          ...pack.subjects[1],
+          progress: { done: 0, total: 0 },
+          exam_date: "2030-11-18",
+        },
+      ],
+    },
+  ]);
 
   const { unmount } = render(page);
   expect(await screen.findByRole("heading", { name: "Noch keine Prüfungspakete" })).toBeVisible();
@@ -174,6 +186,11 @@ it("uses German copy for the heading, empty state, and subject navigation when t
   expect(within(card).getByText("Fächer")).toBeVisible();
   expect(within(subjects).getByRole("link", { name: "Weiter mit Math" })).toBeVisible();
   expect(within(subjects).getByRole("link", { name: "Weiter mit Science" })).toBeVisible();
+  const [math, science] = within(subjects).getAllByRole("listitem");
+  expect(within(math).getByRole("progressbar", { name: "Fortschritt" })).toBeVisible();
+  expect(within(science).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(science).getByText("Prüfungstermin")).toBeVisible();
+  expect(within(science).getByText("18.11.2030")).toHaveAttribute("datetime", "2030-11-18");
 });
 
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {
