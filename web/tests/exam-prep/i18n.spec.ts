@@ -3,6 +3,8 @@ import path from "node:path";
 import { expect, test } from "vitest";
 
 import { initI18n } from "@/i18n/init";
+import deExam from "@/locales/de/exam.json";
+import enExam from "@/locales/en/exam.json";
 import frExam from "@/locales/fr/exam.json";
 import ukExam from "@/locales/uk/exam.json";
 import zhExam from "@/locales/zh/exam.json";
@@ -44,6 +46,15 @@ test("en/exam.json contains the Phase 1 keys", () => {
 
 test.each(otherLocales)("%s/exam.json matches the English key set", (locale) => {
   expect(examKeys(locale)).toEqual(englishKeys);
+});
+
+test("de/exam.json supplies a translation for every English exam label", () => {
+  const germanLabels: Record<string, string> = deExam;
+
+  for (const [key, englishLabel] of Object.entries(enExam)) {
+    expect(germanLabels[key], key).toMatch(/\S/);
+    expect(germanLabels[key], key).not.toBe(englishLabel);
+  }
 });
 
 test("fr/exam.json provides French copy for Exams home", () => {
