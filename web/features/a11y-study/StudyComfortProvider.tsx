@@ -1,5 +1,6 @@
 "use client";
 
+import { Lexend } from "next/font/google";
 import {
   createContext,
   useCallback,
@@ -13,11 +14,13 @@ import {
 import { clampStudyComfort, DEFAULT_STUDY_COMFORT, type StudyComfortSettings } from "./studyComfort";
 
 const STORAGE_KEY = "deeptutor-study-comfort";
-const FONT_FAMILIES: Record<StudyComfortSettings["font"], string> = {
-  system: "system-ui, sans-serif",
-  lexend: "Lexend, system-ui, sans-serif",
-  opendyslexic: "OpenDyslexic, system-ui, sans-serif",
-};
+const SYSTEM_FONT = "system-ui, sans-serif";
+const lexend = Lexend({
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+  preload: false,
+});
 
 interface StudyComfortContextValue {
   settings: Readonly<StudyComfortSettings>;
@@ -26,10 +29,16 @@ interface StudyComfortContextValue {
 
 const StudyComfortContext = createContext<StudyComfortContextValue | null>(null);
 
+function normalizeSettings(value: unknown): StudyComfortSettings {
+  const settings = clampStudyComfort(value);
+  if (settings.font === "opendyslexic") settings.font = DEFAULT_STUDY_COMFORT.font;
+  return settings;
+}
+
 function readStoredSettings(): StudyComfortSettings | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored !== null) return clampStudyComfort(JSON.parse(stored));
+    if (stored !== null) return normalizeSettings(JSON.parse(stored));
   } catch {
     // Storage may be unavailable or contain invalid JSON.
   }
@@ -64,13 +73,13 @@ export function StudyComfortProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = useCallback((changes: Partial<StudyComfortSettings>) => {
     setStoredSettings((current) =>
-      clampStudyComfort({ ...(current ?? DEFAULT_STUDY_COMFORT), ...changes }),
+      normalizeSettings({ ...(current ?? DEFAULT_STUDY_COMFORT), ...changes }),
     );
   }, []);
 
   const value = useMemo(() => ({ settings, updateSettings }), [settings, updateSettings]);
   const style = {
-    "--study-font": FONT_FAMILIES[settings.font],
+    "--study-font": settings.font === "lexend" ? lexend.style.fontFamily : SYSTEM_FONT,
     "--study-size": `${settings.sizePct}%`,
     "--study-line-height": settings.lineHeight,
     "--study-letter-spacing": settings.letterSpacing === "wide" ? "0.05em" : "normal",
