@@ -1,4 +1,4 @@
-"""API for runtime exam packs and their Guided Learning links."""
+"""API for runtime exam packs, Guided Learning links, and teach-back."""
 
 from __future__ import annotations
 
@@ -132,9 +132,9 @@ def _get_subject(exam_pack: ExamPack, subject_id: str) -> Subject:
 
 
 def _get_topic(exam_pack: ExamPack, subject_id: str, topic_id: str) -> Topic:
-    _get_subject(exam_pack, subject_id)
+    subject = _get_subject(exam_pack, subject_id)
     for topic in exam_pack.topics:
-        if topic.subject_id == subject_id and topic.id == topic_id:
+        if topic.id == topic_id and topic.subject_id == subject.id:
             return topic
     raise HTTPException(status_code=404, detail="Exam topic not found")
 
@@ -207,11 +207,8 @@ def get_exam_subject(pack: str, subject: str) -> SubjectDetail:
 @router.post("/{pack}/subjects/{subject}/topics/{topic}/mastery-link")
 def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
     exam_pack = _get_pack(pack)
-    _get_subject(exam_pack, subject)
-    for exam_topic in exam_pack.topics:
-        if exam_topic.id == topic and exam_topic.subject_id == subject:
-            return {"path_id": get_or_create_mastery_link(exam_pack, exam_topic)}
-    raise HTTPException(status_code=404, detail="Exam topic not found")
+    exam_topic = _get_topic(exam_pack, subject, topic)
+    return {"path_id": get_or_create_mastery_link(exam_pack, exam_topic)}
 
 
 @router.post(
@@ -224,7 +221,12 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
                 "application/json": {
                     "schema": {
                         "type": "object",
-                        "properties": {"learner_text": {"type": "string"}},
+                        "properties": {
+                            "learner_text": {
+                                "type": "string",
+                                "description": "Answer with 1–4000 characters after trimming.",
+                            }
+                        },
                         "required": ["learner_text"],
                     }
                 }
