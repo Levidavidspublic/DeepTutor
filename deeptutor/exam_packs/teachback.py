@@ -30,15 +30,17 @@ _STATUS_BY_VERDICT: dict[Verdict, TopicStatus] = {
 }
 _MAX_SHORT_ANSWER_LENGTH = 3
 _TRAILING_PUNCTUATION = r"[.,!?;:…。，！？；：،؛؟׃]*"
+# Consume complete spans for symmetric delimiters so an article between two
+# quoted phrases cannot be mistaken for the contents of a single quotation.
 _QUOTED_ANSWER_PATTERNS = (
-    '"{answer}"',
-    "'{answer}'",
-    "“{answer}”",
-    "‘{answer}’",
-    "`{answer}`",
-    r"«\s*{answer}\s*»",
-    "„{answer}“",
-    "״{answer}״",
+    r'"(?:({answer})|[^"]*)"',
+    r"(?<!\w)'(?:({answer})|(?:[^']|(?<=\w)'(?=\w))*)'(?!\w)",
+    "“({answer})”",
+    "‘({answer})’",
+    "`(?:({answer})|[^`]*)`",
+    "«({answer})»",
+    "„({answer})“",
+    "״(?:({answer})|[^״]*)״",
 )
 
 _GRADING_PROMPT = """Assess the learner's explanation against the listed objectives.
@@ -78,9 +80,11 @@ def _repeats_learner_answer(learner_text: str, feedback: str) -> bool:
 
     # Short tokens can occur naturally in feedback, even at word boundaries.
     echo = answer + _TRAILING_PUNCTUATION
+    quoted_echo = rf"\s*{echo}\s*"
     return re.fullmatch(echo, feedback) is not None or any(
-        re.search(pattern.format(answer=echo), feedback) is not None
+        match[1] is not None
         for pattern in _QUOTED_ANSWER_PATTERNS
+        for match in re.finditer(pattern.format(answer=quoted_echo), feedback)
     )
 
 
