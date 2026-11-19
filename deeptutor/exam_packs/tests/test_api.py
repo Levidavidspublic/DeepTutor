@@ -368,12 +368,7 @@ async def test_exam_pack_manifest_mount_uses_learning_auth(
     monkeypatch.setenv("DEEPTUTOR_EXAM_PACKS_DIR", str(pack_path.parent))
     monkeypatch.setattr(exam_packs, "_packs", None)
     questions = module_routes.manifests()["questions"]
-    exam_route = next(
-        route for route in questions["routes"] if route["reference"].endswith(".exam_packs:router")
-    )
-    monkeypatch.setattr(
-        module_routes, "manifests", lambda: {"questions": {**questions, "routes": [exam_route]}}
-    )
+    monkeypatch.setattr(module_routes, "manifests", lambda: {"questions": questions})
     app = FastAPI()
     module_routes.mount_module_routes(app, RouterLoader(app, lazy=True))
 
