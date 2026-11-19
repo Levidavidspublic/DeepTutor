@@ -29,10 +29,7 @@ import { listExamPacks } from "../api";
 import type { ExamPackSummary } from "../types";
 import { ExamPackCard } from "./ExamPackCard";
 
-const packGuide =
-  "https://github.com/Levidavidspublic/DeepTutor/blob/13927732fa491318c67b5e9eb6d4742ee3468c7f/fork/docs/BACKEND_SCHEMA.md#storage-map";
-
-// The shared app i18n instance only loads the app namespace.
+// The app may only have the English exam bundle loaded.
 const examI18n = createInstance();
 void examI18n.init({
   resources: {
@@ -62,9 +59,10 @@ type PackList =
   | { status: "ready"; packs: ExamPackSummary[] };
 
 export function ExamsHome() {
-  const { i18n, t: tApp } = useTranslation();
+  const { i18n, t: tExam } = useTranslation("exam");
+  const { t: tApp } = useTranslation("app");
   const locale = normalizeLanguage(i18n.language);
-  const t = examI18n.getFixedT(locale, "exam");
+  const t = i18n.hasResourceBundle(locale, "exam") ? tExam : examI18n.getFixedT(locale, "exam");
   const [list, setList] = useState<PackList>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
 
@@ -98,11 +96,7 @@ export function ExamsHome() {
         list.packs.length === 0 ? (
           <LearningEmptyState
             title={t("empty.title")}
-            description={
-              <a href={packGuide} className="rounded-sm underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
-                {t("empty.body")}
-              </a>
-            }
+            description={t("empty.body")}
             icon={<ClipboardList size={24} aria-hidden />}
           />
         ) : (
