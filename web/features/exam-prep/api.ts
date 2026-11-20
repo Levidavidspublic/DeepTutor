@@ -25,6 +25,15 @@ export function getExamSubject(
   return requestJson(examSubjectPath(packId, subjectId), { method: "GET" });
 }
 
+export function createMasteryLink(
+  packId: string,
+  subjectId: string,
+  topicId: string,
+): Promise<{ path_id: string }> {
+  const path = `${examSubjectPath(packId, subjectId)}/topics/${encodeURIComponent(topicId)}/mastery-link`;
+  return requestJson(path, { method: "POST" });
+}
+
 export function submitTeachBack(
   packId: string,
   subjectId: string,
