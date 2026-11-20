@@ -4,14 +4,34 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from threading import Lock
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from deeptutor.exam_packs import ExamPack, GlossaryTerm, Questionnaire, Subject, load_packs
+from deeptutor.exam_packs.decks import (
+    Deck,
+    DeckKind,
+    DeckSummary,
+    import_deck,
+    InvalidDeckInput,
+    list_decks,
+    load_deck,
+    save_deck,
+)
 from deeptutor.exam_packs.glossary import find_terms
 from deeptutor.exam_packs.links import get_or_create_mastery_link
+from deeptutor.exam_packs.mock import (
+    ExpiredMockAttempt,
+    InvalidMockInput,
+    MockResult,
+    build_mock,
+    load_mock_attempt,
+    save_mock_attempt,
+    submit_mock_attempt,
+)
 from deeptutor.exam_packs.models import Topic
 from deeptutor.exam_packs.teachback import (
     InvalidGrade,
@@ -67,6 +87,42 @@ class SubjectDetail(BaseModel):
     ui_lang: str
     questionnaires: list[Questionnaire]
     topics: list[TopicSummary]
+
+
+class ImportDeckRequest(BaseModel):
+    title: str
+    kind: DeckKind
+    text: str
+
+
+class StartMockRequest(BaseModel):
+    subject_id: str
+    questionnaire_code: str
+
+
+class SubmitMockRequest(BaseModel):
+    answers: dict[str, str]
+
+
+class MockQuestionResponse(BaseModel):
+    id: str
+    topic_id: str
+    prompt: str
+    options: dict[str, str]
+    points: int
+
+
+class MockAttemptResponse(BaseModel):
+    attempt_id: UUID
+    pack_id: str
+    subject_id: str
+    questionnaire_code: str
+    ui_lang: str
+    started_at: datetime
+    expires_at: datetime
+    minutes: int
+    questions: list[MockQuestionResponse]
+    result: MockResult | None
 
 
 def _get_packs(*, reload: bool = False) -> list[ExamPack]:
@@ -164,6 +220,53 @@ def get_exam_subject(pack: str, subject: str) -> SubjectDetail:
     )
 
 
+@router.post(
+    "/{pack}/subjects/{subject}/decks",
+    response_model=Deck,
+    response_model_exclude_none=True,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {"application/json": {"schema": ImportDeckRequest.model_json_schema()}},
+        }
+    },
+)
+async def create_exam_deck(pack: str, subject: str, request: Request) -> Deck:
+    _get_subject(_get_pack(pack), subject)
+    # FastAPI's automatic validation can include the submitted card text in a 422.
+    try:
+        body = ImportDeckRequest.model_validate(await request.json())
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail="Expected a title, kind (csv or anki), and text"
+        ) from None
+    try:
+        deck = await run_in_threadpool(import_deck, body.text, body.kind, title=body.title)
+    except InvalidDeckInput as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    await run_in_threadpool(save_deck, deck, pack, subject)
+    return deck
+
+
+@router.get("/{pack}/subjects/{subject}/decks", response_model=list[DeckSummary])
+def list_exam_decks(pack: str, subject: str) -> list[DeckSummary]:
+    _get_subject(_get_pack(pack), subject)
+    return list_decks(pack, subject)
+
+
+@router.get(
+    "/{pack}/subjects/{subject}/decks/{deck_id}",
+    response_model=Deck,
+    response_model_exclude_none=True,
+)
+def get_exam_deck(pack: str, subject: str, deck_id: UUID) -> Deck:
+    _get_subject(_get_pack(pack), subject)
+    deck = load_deck(deck_id, pack, subject)
+    if deck is None:
+        raise HTTPException(status_code=404, detail="Exam deck not found")
+    return deck
+
+
 @router.post("/{pack}/subjects/{subject}/topics/{topic}/mastery-link")
 def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
     exam_pack = _get_pack(pack)
@@ -181,12 +284,12 @@ def create_mastery_link(pack: str, subject: str, topic: str) -> dict[str, str]:
                 "application/json": {
                     "schema": {
                         "type": "object",
-                    "properties": {
-                        "learner_text": {
-                            "type": "string",
-                            "description": "Answer with 1–4000 characters after trimming.",
-                        }
-                    },
+                        "properties": {
+                            "learner_text": {
+                                "type": "string",
+                                "description": "Answer with 1–4000 characters after trimming.",
+                            }
+                        },
                         "required": ["learner_text"],
                     }
                 }
@@ -224,6 +327,54 @@ async def submit_teach_back(pack: str, subject: str, topic: str, request: Reques
 def get_exam_glossary(pack: str, q: str | None = None) -> list[GlossaryTerm]:
     exam_pack = _get_pack(pack)
     return exam_pack.glossary if q is None else find_terms(exam_pack, q)
+
+
+@router.post("/{pack}/mock", response_model=MockAttemptResponse)
+async def start_mock(pack: str, request: StartMockRequest) -> MockAttemptResponse:
+    exam_pack = _get_pack(pack)
+    subject = _get_subject(exam_pack, request.subject_id)
+    questionnaire = next(
+        (item for item in subject.questionnaires if item.code == request.questionnaire_code), None
+    )
+    if questionnaire is None:
+        raise HTTPException(status_code=404, detail="Exam questionnaire not found")
+
+    try:
+        paper = await build_mock(exam_pack, subject, questionnaire)
+    except InvalidMockInput as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    except LLMConfigError:
+        raise HTTPException(status_code=503, detail="Tutor model is not configured") from None
+    except Exception:
+        # The generation pipeline can raise provider exceptions as well as LLMError.
+        raise HTTPException(status_code=502, detail="Tutor model could not generate a mock") from None
+
+    try:
+        attempt = await run_in_threadpool(save_mock_attempt, paper, exam_pack.ui_lang)
+    except InvalidMockInput as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    return MockAttemptResponse.model_validate(attempt, from_attributes=True)
+
+
+@router.get("/mock/{attempt_id}", response_model=MockAttemptResponse)
+def get_mock_attempt(attempt_id: UUID) -> MockAttemptResponse:
+    attempt = load_mock_attempt(attempt_id)
+    if attempt is None:
+        raise HTTPException(status_code=404, detail="Mock attempt not found")
+    return MockAttemptResponse.model_validate(attempt, from_attributes=True)
+
+
+@router.post("/mock/{attempt_id}/submit", response_model=MockResult)
+def submit_mock(attempt_id: UUID, request: SubmitMockRequest) -> MockResult:
+    try:
+        result = submit_mock_attempt(attempt_id, request.answers)
+    except InvalidMockInput as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    except ExpiredMockAttempt as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    if result is None:
+        raise HTTPException(status_code=404, detail="Mock attempt not found")
+    return result
 
 
 @router.post("/reload")

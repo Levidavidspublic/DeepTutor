@@ -21,6 +21,7 @@ import { Dialog } from "@/shared/ui/Dialog";
 import { StatusChip } from "@/shared/ui/StatusChip";
 import { createMasteryLink, getExamSubject, getGlossary } from "../api";
 import type { ExamSubjectDetail, ExamTopic, GlossaryTerm } from "../types";
+import { ExamMockLauncher } from "./ExamMockLauncher";
 
 type LoadState<T> =
   | { status: "loading" }
@@ -200,8 +201,10 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
   const [state, setState] = useState<LoadState<ExamSubjectDetail>>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
+  const [mockOpen, setMockOpen] = useState(false);
   const [studyLaunch, setStudyLaunch] = useState<StudyLaunch>({ status: "idle" });
   const studyInFlight = useRef(false);
+  const subjectPath = `/learning/exams/${encodeURIComponent(packId)}/${encodeURIComponent(subjectId)}`;
 
   useEffect(() => {
     let active = true;
@@ -240,8 +243,7 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
 
   function renderTopicActions(topicId: string) {
     const studyPending = studyLaunch.status === "pending";
-    const teachBackPath = `/learning/exams/${encodeURIComponent(packId)}/${encodeURIComponent(subjectId)}/teach-back`;
-    const teachBackHref = scopedUrl(`${teachBackPath}?${new URLSearchParams({ topic: topicId })}`);
+    const teachBackHref = scopedUrl(`${subjectPath}/teach-back?${new URLSearchParams({ topic: topicId })}`);
 
     return (
       <>
@@ -290,9 +292,22 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
       subtitle={null}
       icon={ClipboardList}
       action={subject && (
-        <Button variant="secondary" aria-haspopup="dialog" onClick={() => setGlossaryOpen(true)}>
-          {glossaryLabel}
-        </Button>
+        <>
+          <Button variant="secondary" aria-haspopup="dialog" onClick={() => setGlossaryOpen(true)}>
+            {glossaryLabel}
+          </Button>
+          <Link
+            href={scopedUrl(`${subjectPath}/drill`)}
+            className={pageActionClass("secondary")}
+          >
+            {t("drill", { ns: "exam" })}
+          </Link>
+          {subject.questionnaires.length > 0 && (
+            <Button aria-haspopup="dialog" onClick={() => setMockOpen(true)}>
+              {t("mock", { ns: "exam" })}
+            </Button>
+          )}
+        </>
       )}
     >
       {state.status === "loading" && <LearningSkeleton />}
@@ -333,6 +348,9 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
           title={glossaryLabel}
           onClose={() => setGlossaryOpen(false)}
         />
+      )}
+      {subject && mockOpen && (
+        <ExamMockLauncher packId={packId} subject={subject} onClose={() => setMockOpen(false)} />
       )}
     </LearningShell>
   );
