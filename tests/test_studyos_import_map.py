@@ -1,10 +1,6 @@
 import re
 from pathlib import Path
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="KITCHEN-PENDING #223: feature not built yet")
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 IMPORT_MAP = REPO_ROOT / "fork" / "imports" / "STUDYOS-IMPORT.md"
 THIRD_PARTY_NOTICES = REPO_ROOT / "THIRD_PARTY_NOTICES.md"
