@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { redirect, RedirectType } from "next/navigation";
 import { ClipboardList } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { pageActionClass } from "@/components/layout/FeaturePage";
 import {
   LearningEmptyState,
   LearningErrorState,
@@ -14,23 +11,16 @@ import {
 } from "@/components/learning/LearningShell";
 import { GlossaryChip } from "@/features/a11y-study/GlossaryChip";
 import { RtlBlock } from "@/features/a11y-study/RtlBlock";
-import { masterySessionRoute } from "@/lib/mastery-mode";
-import { activeWorkspaceId, scopedUrl } from "@/lib/workspace-scope";
 import { Button } from "@/shared/ui/Button";
 import { Dialog } from "@/shared/ui/Dialog";
 import { StatusChip } from "@/shared/ui/StatusChip";
-import { createMasteryLink, getExamSubject, getGlossary } from "../api";
+import { getExamSubject, getGlossary } from "../api";
 import type { ExamSubjectDetail, ExamTopic, GlossaryTerm } from "../types";
 
 type LoadState<T> =
   | { status: "loading" }
   | { status: "error" }
   | { status: "ready"; data: T };
-
-type StudyLaunch =
-  | { status: "idle" }
-  | { status: "pending" | "error"; topicId: string }
-  | { status: "ready"; href: string };
 
 function textLanguage(text: string, lang?: string) {
   return lang ?? (/\p{Script=Hebrew}/u.test(text) ? "he" : undefined);
@@ -50,13 +40,11 @@ function TopicGroup({
   topics,
   sourceLang,
   uiLang,
-  renderActions,
 }: {
   title: ReactNode;
   topics: ExamTopic[];
   sourceLang?: string;
   uiLang?: string;
-  renderActions: (topicId: string) => ReactNode;
 }) {
   const headingId = useId();
   const { t } = useTranslation();
@@ -100,7 +88,6 @@ function TopicGroup({
                   ))}
                 </ul>
               )}
-              {renderActions(topic.id)}
             </li>
           ))}
         </ul>
@@ -200,8 +187,6 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
   const [state, setState] = useState<LoadState<ExamSubjectDetail>>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const [studyLaunch, setStudyLaunch] = useState<StudyLaunch>({ status: "idle" });
-  const studyInFlight = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -222,52 +207,6 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
     setState({ status: "loading" });
     setAttempt((current) => current + 1);
   }
-
-  async function startStudy(topicId: string) {
-    if (studyInFlight.current) return;
-    studyInFlight.current = true;
-    setStudyLaunch({ status: "pending", topicId });
-    const workspaceId = activeWorkspaceId();
-
-    try {
-      const { path_id } = await createMasteryLink(packId, subjectId, topicId);
-      setStudyLaunch({ status: "ready", href: masterySessionRoute(path_id, "study", workspaceId) });
-    } catch {
-      studyInFlight.current = false;
-      setStudyLaunch({ status: "error", topicId });
-    }
-  }
-
-  function renderTopicActions(topicId: string) {
-    const studyPending = studyLaunch.status === "pending";
-    const teachBackPath = `/learning/exams/${encodeURIComponent(packId)}/${encodeURIComponent(subjectId)}/teach-back`;
-    const teachBackHref = scopedUrl(`${teachBackPath}?${new URLSearchParams({ topic: topicId })}`);
-
-    return (
-      <>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            disabled={studyPending}
-            loading={studyPending && studyLaunch.topicId === topicId}
-            onClick={() => void startStudy(topicId)}
-          >
-            {t("study", { ns: "exam" })}
-          </Button>
-          <Link href={teachBackHref} className={pageActionClass("secondary")}>
-            {t("teachBack", { ns: "exam" })}
-          </Link>
-        </div>
-        {studyLaunch.status === "error" && studyLaunch.topicId === topicId && (
-          <LearningErrorState
-            message={t("Could not start the conversation")}
-            onRetry={() => void startStudy(topicId)}
-          />
-        )}
-      </>
-    );
-  }
-
-  if (studyLaunch.status === "ready") redirect(studyLaunch.href, RedirectType.push);
 
   const subject = state.status === "ready" ? state.data : null;
   const glossaryLabel = t("glossary", { ns: "exam" });
@@ -311,7 +250,6 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
                 topics={topics}
                 sourceLang={subject.source_lang}
                 uiLang={subject.ui_lang}
-                renderActions={renderTopicActions}
               />
             ))}
             {unassigned.length > 0 && (
@@ -320,7 +258,6 @@ export function SubjectTopicMap({ packId, subjectId }: { packId: string; subject
                 topics={unassigned}
                 sourceLang={subject.source_lang}
                 uiLang={subject.ui_lang}
-                renderActions={renderTopicActions}
               />
             )}
           </div>
