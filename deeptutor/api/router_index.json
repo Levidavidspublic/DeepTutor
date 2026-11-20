@@ -1,5 +1,5 @@
 {
-  "fingerprint": "1c89224dd3c867b523bdbb8a236f26a278c117f16f5fa259bc0200b6286cf243",
+  "fingerprint": "940d7350ed91bb281adc8b1cf1e45b2d62f95a4780fa0c14a4b103969cd5c04b",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3536,6 +3536,30 @@
         ]
       },
       {
+        "path": "/{pack}/subjects/{subject}/decks",
+        "name": "create_exam_deck",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/{pack}/subjects/{subject}/decks",
+        "name": "list_exam_decks",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/subjects/{subject}/decks/{deck_id}",
+        "name": "get_exam_deck",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
         "path": "/{pack}/subjects/{subject}/topics/{topic}/mastery-link",
         "name": "create_mastery_link",
         "kind": "http",
@@ -3557,6 +3581,30 @@
         "kind": "http",
         "methods": [
           "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/mock",
+        "name": "start_mock",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/mock/{attempt_id}",
+        "name": "get_mock_attempt",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/mock/{attempt_id}/submit",
+        "name": "submit_mock",
+        "kind": "http",
+        "methods": [
+          "POST"
         ]
       },
       {
