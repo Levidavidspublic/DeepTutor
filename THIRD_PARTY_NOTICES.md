@@ -1,5 +1,15 @@
 # Third-party notices
 
+## StudyOS
+
+- Project: [Vaibh37/Studyos](https://github.com/Vaibh37/Studyos)
+- Source commit: `3c446bc4aa0cf92d4a9a3e74f035479b0c7ae7a4`
+- License: Apache-2.0
+- Copyright: Copyright 2026 Vaibh37
+- Adapted features: StudyOS features will be imported with changes for
+  DeepTutor's workspace and storage, as described in the
+  [StudyOS import map](fork/imports/STUDYOS-IMPORT.md).
+
 ## CSSwitch
 
 - Project: [SuperJJ007/CSSwitch](https://github.com/SuperJJ007/CSSwitch)

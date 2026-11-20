@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Mic, Square } from "lucide-react";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import { pageActionClass } from "@/components/layout/FeaturePage";
 import { LearningErrorState } from "@/components/learning/LearningShell";
@@ -59,7 +59,7 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
   const answerField = useRef<HTMLTextAreaElement>(null);
   const returningToDraft = useRef(false);
   const recorder = useVoiceRecorder((text) => {
-    setDraft((current) => [current.trimEnd(), text].filter(Boolean).join(" "));
+    updateDraft((current) => [current.trimEnd(), text].filter(Boolean).join(" "));
   });
 
   const result = submission.status === "graded" ? submission.result : null;
@@ -81,6 +81,13 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
       answerField.current?.focus();
     }
   }, [result]);
+
+  function updateDraft(nextDraft: SetStateAction<string>) {
+    setDraft(nextDraft);
+    setSubmission((current) =>
+      current.status === "editing" && current.error ? { status: "editing" } : current,
+    );
+  }
 
   async function startRecording() {
     if (microphoneRequest.current || submitInFlight.current) return;
@@ -176,7 +183,7 @@ export function TeachBackCard({ packId, subjectId, topic, uiLang, subjectHref }:
             dir="auto"
             value={draft}
             readOnly={submitting}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => updateDraft(event.target.value)}
             className="block w-full resize-y rounded-lg border border-input bg-background p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           {submitError && (
