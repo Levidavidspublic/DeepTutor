@@ -93,7 +93,7 @@ def _plain_text(field: str, row: int) -> str:
         parser.close()
     except AssertionError:
         raise InvalidDeckInput(f"Row {row} contains malformed HTML") from None
-    return "".join(parser.parts).strip()
+    return "".join(parser.parts)
 
 
 def _read_anki_headers(stream: StringIO) -> tuple[bool, int]:

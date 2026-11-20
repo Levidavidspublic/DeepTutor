@@ -91,6 +91,10 @@ async def client(pack_path, decks_dir, monkeypatch):
                         "front": "Example\n```text\nFirst line\nSecond line\n```\nDone.",
                         "back": "Answer",
                     },
+                    {
+                        "front": "```text\n    First line\n    Second line\n```",
+                        "back": "Indented code",
+                    },
                 ]
             ),
             [
@@ -99,6 +103,7 @@ async def client(pack_path, decks_dir, monkeypatch):
                     "back": "An inequality like x < 2.",
                 },
                 {"front": "Example\nFirst line\nSecond line\nDone.", "back": "Answer"},
+                {"front": "    First line\n    Second line", "back": "Indented code"},
             ],
         ),
         (
