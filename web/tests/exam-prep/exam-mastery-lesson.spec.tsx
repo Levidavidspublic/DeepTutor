@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { render, screen, within } from "@testing-library/react";
+=======
+import { fireEvent, render, screen, within } from "@testing-library/react";
+>>>>>>> origin/main
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -67,6 +71,14 @@ vi.mock("@/hooks/useMasteryStudySession", () => ({
 
 vi.mock("@/components/chat/home/ChatViewerBridges", () => ({ ChatViewerBridges: () => null }));
 vi.mock("@/components/chat/home/LazySessionViewerPanel", () => ({ default: () => null }));
+<<<<<<< HEAD
+=======
+vi.mock("@/lib/workspace-drafts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/workspace-drafts")>()),
+  readWorkspaceDraft: vi.fn().mockResolvedValue(undefined),
+  saveWorkspaceDraft: vi.fn().mockResolvedValue(undefined),
+}));
+>>>>>>> origin/main
 
 class MockUtterance {
   lang = "";
@@ -127,7 +139,12 @@ it("reads completed replies and stops the active reply before focusing the draft
   expect(screen.queryByRole("combobox", { name: "Playback speed" })).not.toBeInTheDocument();
 
   const draft = "How does this work for a vertical line?";
+<<<<<<< HEAD
   await user.type(composer, draft);
+=======
+  fireEvent.change(composer, { target: { value: draft } });
+  expect(composer).toHaveValue(draft);
+>>>>>>> origin/main
   await user.click(first);
   expect(speechSynthesis.speak).toHaveBeenLastCalledWith(expect.objectContaining({ text: firstReply, lang: "fr" }));
   await user.click(second);
