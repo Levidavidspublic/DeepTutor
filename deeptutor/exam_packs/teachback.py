@@ -40,8 +40,10 @@ _QUOTED_ANSWER_PATTERNS = (
     "`(?:({answer})|[^`]*)`",
     "«({answer})»",
     "„({answer})“",
-    # Leave a joined quotation of the answer available to the next match.
-    r"״(?:({answer})|(?:[^״]|(?<=\w)״(?=\w)(?!\w+״{answer}״))*)״",
+    # Leave a joined quotation of the answer available to the next match,
+    # even when the connector contains Hebrew combining marks.
+    r"״(?:({answer})|(?:[^״]|(?<=\w)״(?=\w)"
+    r"(?![\w\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7\ufb1e]+״{answer}״))*)״",
 )
 
 _GRADING_PROMPT = """Assess the learner's explanation against the listed objectives.
