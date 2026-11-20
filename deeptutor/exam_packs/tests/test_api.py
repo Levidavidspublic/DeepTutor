@@ -430,6 +430,8 @@ async def test_teach_back_title_fallback_and_concurrent_appends(
         pytest.param("כן", "אמרת ש״כן״ היא התשובה.", 502, id="prefixed-hebrew-quote"),
         pytest.param("כן", "הסבר את ״כן״ו״לא״.", 502, id="first-joined-hebrew-quote"),
         pytest.param("לא", "הסבר את ״כן״ו״לא״.", 502, id="second-joined-hebrew-quote"),
+        pytest.param("כן", "״לא״וְ״כן״", 502, id="vocalized-connector-before-answer"),
+        pytest.param("כן", "השווה בין ״אמת״וְ״שקר״.", 200, id="vocalized-connector-without-echo"),
         pytest.param(
             "כן", "הסבר את ״צה״ל״ו״ כן ״.", 502, id="joined-hebrew-acronym-before-answer"
         ),
