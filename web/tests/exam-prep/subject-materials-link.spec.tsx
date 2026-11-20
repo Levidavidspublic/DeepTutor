@@ -1,9 +1,14 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentType } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pageActionClass } from "@/components/layout/FeaturePage";
 import type { ExamSubjectDetail } from "@/features/exam-prep/types";
 import { initI18n } from "@/i18n/init";
+
+type SubjectTopicMapModule = {
+  SubjectTopicMap: ComponentType<{ packId: string; subjectId: string }>;
+};
 
 // Keep Vite from resolving the component while collecting the pending tests.
 const subjectTopicMapPath = "../../features/exam-prep/components/SubjectTopicMap";
@@ -48,8 +53,9 @@ describe.skip("S3 Materials link KITCHEN-PENDING #68", () => {
   });
 
   it("adds one keyboard-reachable secondary Materials link in the loaded subject header", async () => {
-    // @ts-expect-error KITCHEN-PENDING #68 not built yet
-    const { SubjectTopicMap }: typeof import("@/features/exam-prep/components/SubjectTopicMap") = await import(/* @vite-ignore */ subjectTopicMapPath);
+    const { SubjectTopicMap } = (await import(
+      /* @vite-ignore */ subjectTopicMapPath
+    )) as SubjectTopicMapModule;
     window.history.replaceState(
       {},
       "",
@@ -86,8 +92,9 @@ describe.skip("S3 Materials link KITCHEN-PENDING #68", () => {
   });
 
   it("offers the pack's Materials link for a loaded subject with no topics in General", async () => {
-    // @ts-expect-error KITCHEN-PENDING #68 not built yet
-    const { SubjectTopicMap }: typeof import("@/features/exam-prep/components/SubjectTopicMap") = await import(/* @vite-ignore */ subjectTopicMapPath);
+    const { SubjectTopicMap } = (await import(
+      /* @vite-ignore */ subjectTopicMapPath
+    )) as SubjectTopicMapModule;
     const anotherPackId = "geometry-pack";
     const emptySubject = { ...subject, id: "geometry", title: "Geometry", topics: [] };
     window.history.replaceState(
