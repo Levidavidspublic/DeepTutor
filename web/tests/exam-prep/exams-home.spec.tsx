@@ -278,6 +278,49 @@ it("uses Vietnamese copy for the heading, empty state, and subject navigation wh
   expect(within(subjects).getByRole("link", { name: "Tiếp tục Math" })).toBeVisible();
 });
 
+it("shows each subject's progress and any upcoming exam date", async () => {
+  vi.mocked(listExamPacks).mockResolvedValueOnce([
+    {
+      ...pack,
+      subjects: [
+        { ...pack.subjects[0], progress: { done: 1, total: 4 }, exam_date: "2030-11-18" },
+        { ...pack.subjects[1], progress: { done: 3, total: 4 }, exam_date: null },
+      ],
+    },
+  ]);
+
+  render(<Page />);
+
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  const [math, science] = within(card).getAllByRole("listitem");
+  const mathProgress = within(math).getByRole("progressbar", { name: "Progress" });
+  const scienceProgress = within(science).getByRole("progressbar", { name: "Progress" });
+  expect(mathProgress).toHaveTextContent("25%");
+  expect(mathProgress).toHaveAttribute("aria-valuetext", "1 / 4");
+  expect(scienceProgress).toHaveTextContent("75%");
+  expect(scienceProgress).toHaveAttribute("aria-valuetext", "3 / 4");
+  expect(within(math).getByText("Exam date")).toBeVisible();
+  expect(within(math).getByText("Nov 18, 2030")).toHaveAttribute("datetime", "2030-11-18");
+  expect(within(science).queryByText("Exam date")).not.toBeInTheDocument();
+});
+
+it("omits missing dates and progress when the fields are absent or there are zero topics", async () => {
+  vi.mocked(listExamPacks).mockResolvedValueOnce([
+    {
+      ...pack,
+      subjects: [pack.subjects[0], { ...pack.subjects[1], progress: { done: 0, total: 0 } }],
+    },
+  ]);
+
+  render(<Page />);
+
+  const card = await screen.findByRole("article", { name: "Demo Exam Pack" });
+  expect(within(card).getByRole("link", { name: "Continue Math" })).toBeVisible();
+  expect(within(card).getByRole("link", { name: "Continue Science" })).toBeVisible();
+  expect(within(card).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(card).queryByText("Exam date")).not.toBeInTheDocument();
+});
+
 it("keeps a pack with no subjects visible without a broken Continue link", async () => {
   vi.mocked(listExamPacks).mockResolvedValueOnce([{ ...pack, subjects: [] }]);
 
