@@ -729,6 +729,7 @@ def _learning_surface_for_path(
         ("/api/chat", "chat"),
         ("/api/question", "chat"),
         ("/api/question-notebook", "chat"),
+        ("/api/exam-packs", "chat"),
         ("/api/sessions", "chat"),
         # Task cards are private to the learner's current content workspace.
         ("/api/task-board", "chat"),
@@ -786,7 +787,7 @@ def _resolved_route_path(request: Request) -> str | None:
 
 async def require_learning_surface(
     request: Request,
-    _: TokenPayload | None = Depends(require_auth),
+    payload: TokenPayload | None = Depends(require_auth),
 ) -> None:
     """Second-stage default-deny guard for configured learning accounts."""
     from deeptutor.multi_user.learning_access import (
@@ -795,6 +796,8 @@ async def require_learning_surface(
     )
 
     route_path = _resolved_route_path(request)
+    if (request.method, route_path) == ("POST", "/api/exam-packs/reload"):
+        await require_admin(payload=payload)
     # Personal presentation does not grant a learning surface. Any authenticated
     # learner may read typography and customize these pages, including reading-only accounts.
     if (request.method, route_path) in _PERSONAL_PAGE_ROUTES:

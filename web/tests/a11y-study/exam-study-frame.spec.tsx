@@ -1,8 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import postcss from "postcss";
+import tailwindcss from "tailwindcss";
+import { expect, it, vi } from "vitest";
 import ExamsLayout from "@/app/(workspace)/learning/exams/layout";
 import { initI18n } from "@/i18n/init";
+
+vi.mock("next/font/google", () => ({
+  Lexend: () => ({ style: { fontFamily: "__Lexend_test, system-ui, sans-serif" } }),
+}));
 
 initI18n("en");
 
@@ -28,17 +34,57 @@ it("applies saved reading comfort to the exam route on mount", async () => {
   const comfort = content?.closest("[data-contrast]");
   await waitFor(() => expect(comfort).toHaveAttribute("data-contrast", "high"));
   expect(comfort).toHaveStyle({
-    "--study-font": "Lexend, system-ui, sans-serif",
+    "--study-font": "__Lexend_test, system-ui, sans-serif",
     "--study-size": "125%",
     "--study-line-height": "1.8",
     "--study-letter-spacing": "0.05em",
   });
   expect(content).toHaveStyle({
+    "--exam-reading-size": "1.25rem",
     fontFamily: "var(--study-font)",
-    fontSize: "var(--study-size)",
+    fontSize: "var(--exam-reading-size)",
     lineHeight: "var(--study-line-height)",
     letterSpacing: "var(--study-letter-spacing)",
   });
+  expect(content).toHaveClass(
+    "[&_.dt-page-title]:[font-size:calc(var(--exam-reading-size)*1.75)]",
+    "[&_.dt-page-action]:[font-size:calc(var(--exam-reading-size)*0.78125)]",
+    "[&_.text-xs]:[font-size:calc(var(--exam-reading-size)*0.75)]",
+    "[&_.text-sm]:[font-size:calc(var(--exam-reading-size)*0.875)]",
+    "[&_.text-base]:[font-size:var(--exam-reading-size)]",
+    "[&_.text-lg]:[font-size:calc(var(--exam-reading-size)*1.125)]",
+  );
+});
+
+it("sizes direct and nested exam actions from the same reading size", async () => {
+  render(
+    <ExamsLayout>
+      <a href="/pack" className="dt-page-action">Continue pack</a>
+      <div className="text-sm">
+        <a href="/subject" className="dt-page-action">Continue subject</a>
+      </div>
+    </ExamsLayout>,
+  );
+
+  const packAction = screen.getByRole("link", { name: "Continue pack" });
+  const subjectAction = screen.getByRole("link", { name: "Continue subject" });
+  const frame = packAction.parentElement!;
+  expect([...frame.querySelectorAll(".dt-page-action")]).toEqual([packAction, subjectAction]);
+  expect(frame).toHaveStyle({
+    "--exam-reading-size": "1rem",
+    fontSize: "var(--exam-reading-size)",
+  });
+
+  const css = await postcss([
+    tailwindcss({ content: [{ raw: frame.className }] }),
+  ]).process("@tailwind utilities;", { from: undefined });
+  const actionSizes: string[] = [];
+  css.root.walkRules(/^\S+ \.dt-page-action$/, (rule) => {
+    rule.walkDecls("font-size", (declaration) => {
+      actionSizes.push(declaration.value);
+    });
+  });
+  expect(actionSizes).toEqual(["calc(var(--exam-reading-size) * 0.78125)"]);
 });
 
 it("opens and closes focus with the keyboard and shows exactly one study timer", async () => {
