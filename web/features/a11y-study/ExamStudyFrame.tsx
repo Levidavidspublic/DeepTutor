@@ -1,10 +1,13 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { FocusFrame, FocusModeToggle } from "./FocusMode";
 import { useStudyComfort } from "./StudyComfortProvider";
 
 export function ExamStudyFrame({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isMockAttempt = /^\/learning\/exams\/mock\/[^/]+\/?$/.test(pathname ?? "");
   const { settings } = useStudyComfort();
   const readingStyle: CSSProperties & { "--exam-reading-size": string } = {
     "--exam-reading-size": `${settings.sizePct / 100}rem`,
@@ -25,7 +28,7 @@ export function ExamStudyFrame({ children }: { children: ReactNode }) {
         <FocusModeToggle />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto [&>section]:min-h-full">
-        <FocusFrame>
+        <FocusFrame showStudyTimer={!isMockAttempt}>
           {/* Keep the Learning shell's text hierarchy relative to the reading size. */}
           <div
             style={readingStyle}
