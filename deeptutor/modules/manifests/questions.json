@@ -3,7 +3,9 @@
   "id": "questions",
   "distribution": "deeptutor-questions",
   "requires": [
-    "parsing"
+    "parsing",
+    "server",
+    "mastery"
   ],
   "optional": [
     "knowledge"

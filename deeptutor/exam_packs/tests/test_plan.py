@@ -15,8 +15,6 @@ from deeptutor.services.calendar.models import CreateCalendar, EventInput
 from deeptutor.services.calendar.recurrence import parse_instant
 from deeptutor.services.calendar.store import CalendarStore, get_calendar_store
 
-pytestmark = pytest.mark.skip(reason="KITCHEN-PENDING #62: feature not built yet")
-
 START = date(2027, 3, 27)
 
 
