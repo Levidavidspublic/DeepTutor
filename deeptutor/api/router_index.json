@@ -1,5 +1,5 @@
 {
-  "fingerprint": "1c89224dd3c867b523bdbb8a236f26a278c117f16f5fa259bc0200b6286cf243",
+  "fingerprint": "dff99623b18b82affd24ca509fb665690da9d16c049dcb695ccd290cf7b86586",
   "routers": {
     "deeptutor.api.routers.auth:router": [
       {
@@ -3554,6 +3554,22 @@
       {
         "path": "/{pack}/glossary",
         "name": "get_exam_glossary",
+        "kind": "http",
+        "methods": [
+          "GET"
+        ]
+      },
+      {
+        "path": "/{pack}/mock",
+        "name": "start_mock",
+        "kind": "http",
+        "methods": [
+          "POST"
+        ]
+      },
+      {
+        "path": "/mock/{attempt_id}",
+        "name": "get_mock_attempt",
         "kind": "http",
         "methods": [
           "GET"
