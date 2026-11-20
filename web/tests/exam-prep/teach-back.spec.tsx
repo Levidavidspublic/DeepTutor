@@ -131,9 +131,12 @@ it("checks a typed answer once, reads the prompt and feedback, and lets the lear
   expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
-it("appends a transcription to the draft and waits for an explicit check", async () => {
+it("appends a transcription, clears the check error, and waits for an explicit check", async () => {
   const transcription = Promise.withResolvers<Response>();
-  fetchMock.mockResolvedValueOnce(Response.json(subject)).mockReturnValueOnce(transcription.promise);
+  fetchMock
+    .mockResolvedValueOnce(Response.json(subject))
+    .mockRejectedValueOnce(new Error("Offline"))
+    .mockReturnValueOnce(transcription.promise);
   const stopTrack = vi.fn();
   const stream = { getTracks: () => [{ stop: stopTrack }] };
   const permission = Promise.withResolvers<typeof stream>();
@@ -159,13 +162,15 @@ it("appends a transcription to the draft and waits for an explicit check", async
   const check = screen.getByRole("button", { name: "Check answer" });
   expect(check).toBeDisabled();
   await user.type(answer, "Slope is");
+  await user.click(check);
+  expect(await screen.findByRole("alert")).toBeVisible();
   const mic = screen.getByRole("button", { name: "Record voice" });
   await user.click(mic);
   expect(getUserMedia).toHaveBeenCalledExactlyOnceWith({ audio: true });
   expect(mic).toBeDisabled();
   expect(check).toBeDisabled();
   fireEvent.submit(check.closest("form")!);
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledTimes(2);
   await act(async () => permission.resolve(stream));
   expect(check).toBeDisabled();
   await user.click(await screen.findByRole("button", { name: "Stop recording" }));
@@ -175,10 +180,12 @@ it("appends a transcription to the draft and waits for an explicit check", async
     expect.stringContaining(`/api/voice/stt?dt_workspace=${workspaceId}`),
     expect.objectContaining({ method: "POST", body: expect.any(FormData) }),
   );
+  expect(screen.getByRole("alert")).toBeVisible();
   await act(async () => transcription.resolve(Response.json({ text: " rise over run " })));
   expect(answer).toHaveValue("Slope is rise over run");
+  expect(screen.queryByRole("alert")).toBeNull();
   expect(check).toBeEnabled();
-  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock).toHaveBeenCalledTimes(3);
 
   await user.type(answer, ".");
   fetchMock.mockResolvedValueOnce(Response.json({
@@ -189,6 +196,30 @@ it("appends a transcription to the draft and waits for an explicit check", async
   await user.click(check);
   expectGradeRequest("Slope is rise over run.");
   expect(await screen.findByRole("heading", { name: "Not quite" })).toBeVisible();
+});
+
+it("clears the check error when the learner edits a typed answer and lets them check again", async () => {
+  fetchMock
+    .mockResolvedValueOnce(Response.json(subject))
+    .mockRejectedValueOnce(new Error("Offline"))
+    .mockResolvedValueOnce(Response.json(partial));
+  const user = userEvent.setup();
+  render(<TeachBackPage />);
+
+  const answer = await screen.findByRole("textbox", { name: "Your answer" });
+  const check = screen.getByRole("button", { name: "Check answer" });
+  await user.type(answer, "Slope is");
+  await user.click(check);
+  expect(await screen.findByRole("alert")).toBeVisible();
+
+  await user.type(answer, " rise over run.");
+  expect(answer).toHaveValue("Slope is rise over run.");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+
+  await user.click(check);
+  expectGradeRequest("Slope is rise over run.");
+  expect(await screen.findByRole("heading", { name: "Partially correct" })).toBeVisible();
 });
 
 it("recovers from a missing provider and returns to a freshly loaded, scoped topic map", async () => {
