@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { SelectionSpeechToolbar } from "@/components/voice/SelectionSpeechToolbar";
@@ -34,6 +35,10 @@ import {
   type MessageAttachment,
   useChatStateAdapter,
 } from "@/features/chat/ChatStateAdapter";
+import { GlossaryChip } from "@/features/a11y-study/GlossaryChip";
+import { ReadAloudButton } from "@/features/a11y-study/ReadAloudButton";
+import { getGlossary } from "@/features/exam-prep/api";
+import type { GlossaryTerm } from "@/features/exam-prep/types";
 import { useChatAutoScroll } from "@/hooks/useChatAutoScroll";
 import { useMasteryOpening } from "@/hooks/useMasteryOpening";
 import { useMasteryStudySession } from "@/hooks/useMasteryStudySession";
@@ -54,6 +59,7 @@ import {
   type MasteryMode,
 } from "@/lib/mastery-mode";
 import { workspaceActionNeedsConfiguration } from "@/lib/workspace-mode";
+import { Button } from "@/shared/ui/Button";
 
 import { ActivityHeader } from "@/components/activity";
 
@@ -174,6 +180,73 @@ function currentWaypoint(topic: MasteryTopic, fallback: string, t: Translate) {
   };
 }
 
+function linkedExamTopic(sources: MasteryTopic["sources"]) {
+  for (const { metadata } of sources) {
+    const {
+      exam_pack_id: packId,
+      exam_subject_id: subjectId,
+      exam_topic_id: topicId,
+      exam_ui_lang: language,
+    } = metadata ?? {};
+    if (
+      typeof packId === "string" &&
+      packId &&
+      typeof subjectId === "string" &&
+      subjectId &&
+      typeof topicId === "string" &&
+      topicId
+    ) {
+      return {
+        packId,
+        subjectId,
+        topicId,
+        language: typeof language === "string" ? language : undefined,
+      };
+    }
+  }
+  return null;
+}
+
+function ExamLessonGlossary({ packId, topicId }: { packId: string; topicId: string }) {
+  const { t } = useTranslation();
+  const [terms, setTerms] = useState<GlossaryTerm[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void getGlossary(packId).then(
+      (glossary) => {
+        if (active) setTerms(glossary.filter((term) => term.topic_ids.includes(topicId)));
+      },
+      () => {
+        // Glossary availability does not affect the lesson or its controls.
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [packId, topicId]);
+
+  if (terms.length === 0) return null;
+
+  return (
+    <ul
+      role="list"
+      aria-label={t("glossary", { ns: "exam" })}
+      className="flex max-h-24 flex-wrap gap-2 overflow-y-auto p-1"
+    >
+      {terms.map((term, index) => (
+        <li key={index}>
+          <GlossaryChip
+            term_source={term.term_source}
+            term_ui={term.term_ui}
+            note={term.note}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function MasteryStudy({
   pathId,
   routeSessionId,
@@ -216,6 +289,7 @@ export function MasteryStudy({
   const hasMessages = state.messages.length > 0;
   const prefillInputRef = useRef<((text: string) => void) | null>(null);
   const viewerPanelRef = useRef<SessionViewerPanelHandle | null>(null);
+  const [speechVersion, setSpeechVersion] = useState(0);
 
   // Attachment cards were rendered without a click handler here, so a
   // generated file or image in the transcript simply did nothing when
@@ -585,6 +659,18 @@ export function MasteryStudy({
   const waypoint = currentWaypoint(topic, displayName, t);
   const completed = topic.map.counts.mastered;
   const total = topic.map.counts.total;
+  const examTopic = topic.path_id === pathId ? linkedExamTopic(topic.sources) : null;
+  const teachBackHref = examTopic
+    ? scopedUrl(
+        `/learning/exams/${encodeURIComponent(examTopic.packId)}/${encodeURIComponent(examTopic.subjectId)}/teach-back?${new URLSearchParams({ topic: examTopic.topicId })}`,
+      )
+    : null;
+
+  function askExamQuestion() {
+    // Remount the reply controls so the active useSpeech owner cancels playback before focus moves.
+    flushSync(() => setSpeechVersion((version) => version + 1));
+    composerBoxRef.current?.querySelector("textarea")?.focus();
+  }
 
   return (
     <main className="mastery-shell flex h-full min-h-0 flex-col overflow-hidden">
@@ -837,6 +923,13 @@ export function MasteryStudy({
                       isStreaming={state.isStreaming}
                       sessionId={state.sessionId}
                       language={state.language}
+                      renderAssistantSpeech={examTopic ? ({ id, content }) => (
+                        <ReadAloudButton
+                          key={JSON.stringify([pathId, state.sessionId, id, speechVersion])}
+                          text={content}
+                          lang={examTopic.language}
+                        />
+                      ) : undefined}
                       onCopyAssistantMessage={copyAssistantMessage}
                       onRegenerateMessage={regenerateLastMessage}
                       canResendLastTurn={state.lastTurnFailed}
@@ -884,6 +977,32 @@ export function MasteryStudy({
             />
             <SelectionSpeechToolbar rootRef={messagesContainerRef} />
           </div>
+
+          {examTopic && teachBackHref && (
+            <div className="mx-auto w-full max-w-[900px] shrink-0 space-y-2 px-4 py-2 sm:px-7">
+              <ExamLessonGlossary
+                key={teachBackHref}
+                packId={examTopic.packId}
+                topicId={examTopic.topicId}
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={askExamQuestion}
+                  disabled={sessionLoading || Boolean(sessionError)}
+                >
+                  {t("Ask a question")}
+                </Button>
+                <Link
+                  href={teachBackHref}
+                  className="rounded-lg px-2 py-1 text-sm font-medium text-[var(--primary)] hover:underline focus-visible:outline focus-visible:outline-2"
+                >
+                  {t("teachBack", { ns: "exam" })}
+                </Link>
+              </div>
+            </div>
+          )}
 
           {!sessionError && (
             <div
