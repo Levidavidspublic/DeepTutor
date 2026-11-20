@@ -135,7 +135,9 @@ it("appends a transcription to the draft and waits for an explicit check", async
   const transcription = Promise.withResolvers<Response>();
   fetchMock.mockResolvedValueOnce(Response.json(subject)).mockReturnValueOnce(transcription.promise);
   const stopTrack = vi.fn();
-  const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop: stopTrack }] });
+  const stream = { getTracks: () => [{ stop: stopTrack }] };
+  const permission = Promise.withResolvers<typeof stream>();
+  const getUserMedia = vi.fn().mockReturnValue(permission.promise);
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
   vi.stubGlobal("MediaRecorder", class {
     state = "inactive";
@@ -157,8 +159,14 @@ it("appends a transcription to the draft and waits for an explicit check", async
   const check = screen.getByRole("button", { name: "Check answer" });
   expect(check).toBeDisabled();
   await user.type(answer, "Slope is");
-  await user.click(screen.getByRole("button", { name: "Record voice" }));
+  const mic = screen.getByRole("button", { name: "Record voice" });
+  await user.click(mic);
   expect(getUserMedia).toHaveBeenCalledExactlyOnceWith({ audio: true });
+  expect(mic).toBeDisabled();
+  expect(check).toBeDisabled();
+  fireEvent.submit(check.closest("form")!);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  await act(async () => permission.resolve(stream));
   expect(check).toBeDisabled();
   await user.click(await screen.findByRole("button", { name: "Stop recording" }));
   expect(stopTrack).toHaveBeenCalledOnce();
