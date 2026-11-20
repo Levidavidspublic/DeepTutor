@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -55,3 +55,29 @@ class GlossaryTerm:
     term_ui: str
     note: str
     topic_ids: list[str]
+
+
+@dataclass
+class MockQuestion:
+    """Internal question record with its scoring information."""
+
+    id: str
+    topic_id: str
+    prompt: str
+    options: dict[str, str]
+    correct_option: str = field(repr=False)
+    rationale: str = field(repr=False)
+    points: int
+
+
+@dataclass
+class MockPaper:
+    """Internal timed paper with the questions in presentation order."""
+
+    attempt_id: str
+    pack_id: str
+    subject_id: str
+    questionnaire: str
+    questions: list[MockQuestion]
+    started_at: datetime
+    minutes: int
